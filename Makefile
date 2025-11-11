@@ -30,7 +30,8 @@ caddy_config:  ## Display the current Caddy configuration
 	@echo "=== Current Caddy Configuration ==="
 	cat /etc/caddy/Caddyfile
 
-replace_caddy_config: # Replace the current Caddy configuration for the new one in ./caddyConfiguration/Caddyfile
+
+replace_caddy_config: ## Replace the current Caddy configuration for the new one in ./caddyConfiguration/Caddyfile
 	@echo "=== Replacing caddy configuration"
 	sudo cp ./caddyConfiguration/Caddyfile /etc/caddy/Caddyfile
 
