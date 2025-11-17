@@ -5,8 +5,12 @@ DOCKER_COMPOSE_NGINX ?= ./docker-compose/docker-compose-nginx-hpc.yaml
 OAS_PATH ?= ./specs/hpc-oas.yaml
 SLAS_PATH ?=./specs/slas
 NGINX_CONF_PATH ?= ./nginx.conf
+NGINX_CONTAINER ?= sla-proxy
+
 
 .DEFAULT_GOAL := help
+
+## Docs stuff
 
 # ===============================
 # Help: list all available targets
@@ -22,43 +26,72 @@ list: ## List all available commands
 
 ## Caddy and nginx stuff for high level maintenance
 
+## Caddy stuff
+
 caddy_status:  ## Show the current status of the Caddy service
 	@echo "=== Caddy status ==="
 	sudo systemctl status caddy --no-pager --lines=15
 
-caddy_config:  ## Display the current Caddy configuration
+caddy_current_config:  ## Display the current Caddy configuration
 	@echo "=== Current Caddy Configuration ==="
 	cat /etc/caddy/Caddyfile
 
-caddy_reload: ## Reload Caddy configuration
+caddy_reload_config: ## Reload Caddy configuration
 	@echo "=== Reloading caddy config ==="
 	sudo caddy reload --config /etc/caddy/Caddyfile
 
-replace_caddy_config: ## Replace the current Caddy configuration for the new one in ./caddyConfiguration/Caddyfile
+caddy_replace_config: ## Replace the current Caddy configuration for the new one in ./caddyConfiguration/Caddyfile
 	@echo "=== Replacing caddy configuration"
 	sudo cp ./caddyConfiguration/Caddyfile /etc/caddy/Caddyfile
 
-caddy_initial_html:  ## Display the initial HTML page served by Caddy
+caddy_show_initial_html:  ## Display the initial HTML page served by Caddy
 	@echo "=== Initial html served by Caddy ==="
 	cat /usr/share/caddy/alma.us.es/index.html
+
+
+caddy_logs:  ## Show the latest 200 lines of Caddy logs
+	@echo "=== Caddy Logs ==="
+	sudo journalctl -u caddy -n 200 --no-pager
+
+## Nginx stuff
+
+nginx_status: ## Show the current status of the Nginx container
+	@echo "=== Nginx status (container: $(NGINX_CONTAINER)) ==="
+	docker ps --filter "name=$(NGINX_CONTAINER)"
+
+nginx_current_config:  ## Display the current nginx configuration
+	@echo "=== Current nginx config ==="
+	docker exec -it sla-proxy cat /etc/nginx/nginx.conf
+
+nginx_reload_config:
+	docker exec sla-proxy nginx -s reload ; \
+
+nginx_check_config:  ## Verify nginx configuration syntax
+	echo "Verifying nginx.conf syntax" ; \
+	docker exec sla-proxy nginx -t ; \
+
+nginx_show_initial_html: ## Show the initial HTML served by nginx
+	@echo "=== Initial HTML served by Nginx ==="
+	docker exec $(NGINX_CONTAINER) cat /usr/share/nginx/html/index.html
+
+nginx_logs: ## Show the latest 200 lines of nginx access & error logs
+	@echo "=== showing Nginx logs ==="
+	docker logs $(NGINX_CONTAINER)
+
+
+## Docker stuff
 
 docker_status:  ## Show active and all Docker containers
 	@echo "=== Active containers ==="
 	docker ps
 	@echo "\n=== All containers ==="
 	docker ps -a
-
-caddy_logs:  ## Show the latest 200 lines of Caddy logs
-	@echo "=== Caddy Logs ==="
-	sudo journalctl -u caddy -n 200 --no-pager
-
-current_nginx_config:  ## Display the current nginx configuration
-	@echo "=== Current nginx config ==="
-	cat ../nginxConf/nginx.conf
-
-check_nginx_config:  ## Verify nginx configuration syntax
-	echo "Verifying nginx.conf syntax" ; \
-	docker exec sla-proxy nginx -t ; \
+	@echo "\n=== Current downloaded images ==="
+	docker images
+	@echo "\n=== Current volumes ==="
+	docker volume ls
+	@echo "\n=== Current networks ==="
+	docker network ls
 
 # =====================================================
 # Low-level maintenance: SLA generation and nginx config
@@ -112,3 +145,4 @@ replace_nginx_config:  ## Its as create_nginx_config but it replaces the current
 	docker exec sla-proxy nginx -t ; \
 	echo "Reload nginx service" ; \
 	docker exec sla-proxy nginx -s reload ; \
+
