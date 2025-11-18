@@ -16,4 +16,7 @@ This is the main controller of the sla-creation and updates in ALMA CORE
 
 ## Tests
 
-//TODO
+For testing we have to consider the following enviroment:
+
+Caddy will be in a **docker container** named caddy-test listening on port ***81***.
+Nginx will be in a docker container named **sla-proxy-test** listening on port ***8081***.
