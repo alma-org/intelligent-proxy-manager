@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "node:url";
 import { generateDevCertificates } from "./Caddy/helpers/generateCerts.js";
+import logger from "./logger.js"; 
 
 dotenv.config({ quiet: true });
 
@@ -12,7 +13,7 @@ const __dirname = path.dirname(__filename);
 export const CERT_DIR = path.join(__dirname, "caddy/config");
 
 beforeAll(() => {
-  console.log("🔧 Global test setup…");
+  logger.info("🔧 Global test setup…");
 
   generateDevCertificates({
     dir: CERT_DIR,
@@ -22,5 +23,5 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  console.log("🏁 Global teardown…");
+  logger.info("🏁 Global teardown…");
 });
