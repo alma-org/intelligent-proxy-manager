@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 
-export function generateDevCertificates({ dir, domain = "test.local" }) {
+export function generateDevCertificates({ dir, domain }) {
   const keyPath = path.join(dir, "test-key.pem");
   const certPath = path.join(dir, "test-cert.pem");
   const confPath = path.join(dir, "openssl.cnf");

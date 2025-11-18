@@ -1,6 +1,6 @@
 import https from "https";
 
-export function waitForHttps({ host = "localhost", port, domain = "alma.test", timeout = 10000 }) {
+export function waitForHttps({ host = "localhost", port, domain = process.env.TEST_DOMAIN, timeout = process.env.TEST_TIMEOUT }) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
 

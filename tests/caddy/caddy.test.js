@@ -21,10 +21,7 @@ describe("Caddy HTTPS", () => {
   });
 
   it("sirve HTTPS correctamente", async () => {
-    const res = await waitForHttps({
-      port: httpsPort,
-      domain: "alma.test"
-      });
+    const res = await waitForHttps({ port: httpsPort});
     expect(res.statusCode).toBe(404);
   });
 
