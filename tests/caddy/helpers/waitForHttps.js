@@ -1,4 +1,3 @@
-// tests/caddy/helpers/waitForHttps.js
 import https from "https";
 
 export function waitForHttps({ host = "localhost", port, domain = "alma.test", timeout = 10000 }) {
