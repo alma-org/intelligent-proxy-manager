@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
     "shelljs": "^0.10.0",
     "testcontainers": "^11.8.1",
     "vitest": "^4.0.9"

@@ -1,20 +1,32 @@
-// utils/waitForHttps.js
-import https from "node:https";
+// tests/caddy/helpers/waitForHttps.js
+import https from "https";
 
-export async function waitForHttps(host, port, retries = 10, delay = 500) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await new Promise((resolve, reject) => {
-        const req = https.get({ hostname: host, port, rejectUnauthorized: false }, (res) => {
-          res.destroy();
-          resolve();
-        });
-        req.on("error", reject);
+export function waitForHttps({ host = "localhost", port, domain = "alma.test", timeout = 10000 }) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
+    function tryConnect() {
+      const req = https.get(
+        {
+          hostname: host,
+          port,
+          agent,
+          servername: domain,
+          headers: { Host: domain },
+        },
+        (res) => resolve(res)
+      );
+
+      req.on("error", (err) => {
+        if (Date.now() - start > timeout) return reject(err);
+        setTimeout(tryConnect, 100);
       });
-      return;
-    } catch {
-      await new Promise((r) => setTimeout(r, delay));
     }
-  }
-  throw new Error(`HTTPS did not answer in ${host}:${port}`);
+
+    tryConnect();
+  });
 }
