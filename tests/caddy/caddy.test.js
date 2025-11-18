@@ -20,8 +20,9 @@ describe("Caddy HTTPS", () => {
     if (container) await container.stop();
   });
 
-  it("sirve HTTPS correctamente", async () => {
+  it("should serve HTTPS correctly", async () => {
     const res = await waitForHttps({ port: httpsPort});
+    // We expect a 404 because there is no index.html and it only redirects to nginx
     expect(res.statusCode).toBe(404);
   });
 
