@@ -6,7 +6,7 @@ alma.test {
 
     handle_path /engine/* {
         uri strip_prefix /engine/
-        reverse_proxy host.docker.internal:{{BACKEND_PORT}} {
+        reverse_proxy {{BACKEND_HOST}}:{{BACKEND_PORT}} {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}

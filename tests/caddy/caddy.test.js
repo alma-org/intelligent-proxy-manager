@@ -16,7 +16,7 @@ describe("Caddy HTTPS", () => {
     httpsPort = started.httpsPort;
     httpPort = started.httpPort
 
-    await waitForHttps({ port: httpsPort, timeout: 15000 });
+    await waitForHttps({ port: httpsPort, timeout: process.env.TEST_TIMEOUT });
   });
 
   afterAll(async () => {
@@ -40,7 +40,6 @@ describe("Caddy HTTPS", () => {
     expect(location).toMatch(/^https:\/\//);
   });
 
-  
 });
 
 

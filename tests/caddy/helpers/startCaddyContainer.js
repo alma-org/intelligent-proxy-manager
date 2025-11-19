@@ -6,12 +6,15 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function startCaddy({ backendPort = process.env.TEST_BACKEND_PORT }) {
+export async function startCaddy({ backendPort = process.env.TEST_BACKEND_PORT, caddyRedirectionHost = process.env.CADDY_REDIRECTION_HOST, network }) {
   const baseDir = path.join(__dirname, "../config");
   const caddyfilePath = path.join(baseDir, "Caddyfile");
 
   const original = fs.readFileSync(caddyfilePath, "utf8");
-  const finalCaddyfile = original.replace(/{{BACKEND_PORT}}/g, backendPort);
+  const finalCaddyfile = original
+              .replace(/{{BACKEND_HOST}}/g, caddyRedirectionHost)
+              .replace(/{{BACKEND_PORT}}/g, backendPort);
+  
 
   const tmpFile = path.join(baseDir, "Caddyfile.final");
   fs.writeFileSync(tmpFile, finalCaddyfile);
@@ -24,11 +27,17 @@ export async function startCaddy({ backendPort = process.env.TEST_BACKEND_PORT }
       { source: path.join(baseDir, "test-key.pem"), target: "/etc/caddy/test-key.pem" },
     ])
     .withExposedPorts(80, 443)
-    .start();
+
+
+    if (network) {
+      container.withNetworkMode(network.getName());
+    }
+
+    const startedContainer = await container.start();
 
   return {
-    container,
-    httpPort: container.getMappedPort(80),
-    httpsPort: container.getMappedPort(443),
+    container: startedContainer,
+    httpPort: startedContainer.getMappedPort(80),
+    httpsPort: startedContainer.getMappedPort(443),
   };
 }
