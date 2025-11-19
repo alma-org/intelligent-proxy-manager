@@ -1,2 +1,6 @@
 node_modules
 .env
+Caddyfile.final
+openssl.cnf
+test-cert.pem
+test-key.pem
