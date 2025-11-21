@@ -73,7 +73,7 @@ describe("Nginx reverse proxy + mock backend", () => {
     const endpoint = `/v1/chat/completions`;
 
     it(`should redirect POST ${endpoint} to the mock backend with apikey ${apikey} and return 200`, async () => {
-      logger.error(`testing ${endpoint} with api key ${apikey}`)
+      logger.debug(`testing ${endpoint} with api key ${apikey}`)
       const body = JSON.stringify({
         model: "Qwen/Qwen2.5-Coder-32B-Instruct",
         messages: [

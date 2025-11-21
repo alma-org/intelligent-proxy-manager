@@ -16,7 +16,7 @@ export function generateTestNginxConf({ originalConfPath, backendHost, backendPo
     fs.mkdirSync(configDir, { recursive: true });
   }
 
-  const testConfPath = path.join(configDir, "nginx.test.conf");
+  const testConfPath = path.join(configDir, "nginx.test.mockllm.conf");
 
   fs.writeFileSync(testConfPath, conf, "utf-8");
 
