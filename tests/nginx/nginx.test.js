@@ -2,12 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import net from "net";
 import { startNginxFromFile } from "./helpers/startNginxFromFile.js";
 
-describe("Nginx bootstrap with provided config", () => {
+describe("Nginx runs with provided config", () => {
   let instance;
   let port;
 
   beforeAll(async () => {
-    instance = await startNginxFromFile({nginxConfPath: process.env.NGINX_FILE_TO_TEST});
+    instance = await startNginxFromFile({nginxConfPath: process.env.NGINX_FILE_TO_TEST, nginxPort: process.env.NGINX_PORT});
     port = instance.httpPort;
   });
 
@@ -31,4 +31,6 @@ describe("Nginx bootstrap with provided config", () => {
 
     expect(isListening).toBe(true);
   });
+
+
 });

@@ -1,7 +1,7 @@
 import { GenericContainer } from "testcontainers";
 import fs from "fs";
 
-export async function startNginxFromFile({nginxConfPath = process.env.NGINX_FILE_TO_TEST}) {
+export async function startNginxFromFile({ nginxConfPath = process.env.NGINX_FILE_TO_TEST, nginxPort = process.env.NGINX_PORT, network }) {
 
   if (!nginxConfPath) {
     throw new Error("NGINX_FILE_TO_TEST env var is not set");
@@ -19,12 +19,16 @@ export async function startNginxFromFile({nginxConfPath = process.env.NGINX_FILE
         target: "/etc/nginx/nginx.conf"
       }
     ])
-    .withExposedPorts(8080);
+    .withExposedPorts(nginxPort);
 
-  const started = await container.start();
+    if (network) {
+        container.withNetworkMode(network.getName());
+    }
+
+  const startedContainer = await container.start();
 
   return {
-    container: started,
-    httpPort: started.getMappedPort(8080),
+    container: startedContainer,
+    httpPort: startedContainer.getMappedPort(nginxPort),
   };
 }
