@@ -5,6 +5,8 @@ import { startNginxFromFile } from "./helpers/startNginxFromFile.js";
 import logger from "../logger.js"
 
 const confPath = process.env.NGINX_FILE_TO_TEST;
+const nginxContainerName = `nginx-test-502-${Date.now()}`
+
 if (!confPath || !fs.existsSync(confPath)) {
   throw new Error("NGINX_FILE_TO_TEST is undefined or does not exist");
 }
@@ -32,7 +34,7 @@ describe("Nginx endpoints following happy path (one req per path and apikey)", (
   let port;
 
   beforeAll(async () => {
-    instance = await startNginxFromFile({ nginxConfPath: confPath, nginxPort: process.env.NGINX_PORT });
+    instance = await startNginxFromFile({ nginxConfPath: confPath, nginxPort: process.env.NGINX_PORT, containerName: nginxContainerName });
     port = instance.httpPort;
   });
 

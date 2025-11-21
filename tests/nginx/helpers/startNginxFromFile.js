@@ -1,7 +1,7 @@
 import { GenericContainer } from "testcontainers";
 import fs from "fs";
 
-export async function startNginxFromFile({ nginxConfPath = process.env.NGINX_FILE_TO_TEST, nginxPort = process.env.NGINX_PORT, network }) {
+export async function startNginxFromFile({ nginxConfPath = process.env.NGINX_FILE_TO_TEST, nginxPort = process.env.NGINX_PORT, network, containerName = `nginx-test-${Date.now()}` }) {
 
   if (!nginxConfPath) {
     throw new Error("NGINX_FILE_TO_TEST env var is not set");
@@ -12,7 +12,7 @@ export async function startNginxFromFile({ nginxConfPath = process.env.NGINX_FIL
   }
 
   const container = new GenericContainer("nginx:latest")
-    .withName(`nginx-test-${Date.now()}`)
+    .withName(containerName)
     .withCopyFilesToContainer([
       {
         source: nginxConfPath,

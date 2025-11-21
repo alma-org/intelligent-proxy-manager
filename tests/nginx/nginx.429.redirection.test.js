@@ -9,8 +9,6 @@ import { generateTestNginxConf } from "./helpers/generateTestNginxConf.js";
 import logger from "../logger.js"
 
 const confPath = process.env.NGINX_FILE_TO_TEST;
-const nginxContainerName = `nginx-test-redirection-${Date.now()}`
-
 if (!confPath || !fs.existsSync(confPath)) {
   throw new Error("NGINX_FILE_TO_TEST is undefined or does not exist");
 }
@@ -59,8 +57,7 @@ describe("Nginx reverse proxy + mock backend", () => {
     nginx = await startNginxFromFile({
       nginxConfPath: testConf,
       nginxPort: 8080,
-      network,
-      containerName: nginxContainerName
+      network
     });
 
     port = nginx.httpPort;
