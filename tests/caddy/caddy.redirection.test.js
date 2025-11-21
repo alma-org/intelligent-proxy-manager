@@ -1,7 +1,7 @@
 import https from "https";
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { Network } from "testcontainers";
-import { startBackendMock } from "../utils/startBackendMock.js";
+import { startBackendMock } from "./helpers/startBackendMock.js";
 import { startCaddy } from "./helpers/startCaddyContainer.js";
 import { waitForHttps } from "./helpers/waitForHttps.js";
 

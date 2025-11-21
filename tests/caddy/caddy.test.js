@@ -9,7 +9,7 @@ describe("Caddy HTTPS", () => {
   let httpPort;
 
   beforeAll(async () => {
-    const backendPort = process.env.TEST_BACKEND_PORT;
+    const backendPort = process.env.TEST_CADDY_MOCK_BACKEND_PORT;
 
     const started = await startCaddy({ backendPort });
     container = started.container;

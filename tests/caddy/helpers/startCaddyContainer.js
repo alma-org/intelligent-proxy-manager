@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function startCaddy({ backendPort = process.env.TEST_BACKEND_PORT, caddyRedirectionHost = process.env.CADDY_REDIRECTION_HOST, network }) {
+export async function startCaddy({ backendPort = process.env.TEST_CADDY_MOCK_BACKEND_PORT, caddyRedirectionHost = process.env.CADDY_REDIRECTION_HOST, network }) {
   const baseDir = path.join(__dirname, "../config");
   const caddyfilePath = path.join(baseDir, "Caddyfile");
 
