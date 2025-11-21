@@ -68,5 +68,4 @@ describe("Nginx runs with provided config", () => {
     expect(res.statusCode).toBe(403);
   });
 
-
 });
