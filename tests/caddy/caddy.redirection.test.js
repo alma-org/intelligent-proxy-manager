@@ -6,6 +6,7 @@ import { startCaddy } from "./helpers/startCaddyContainer.js";
 import { waitForHttps } from "./helpers/waitForHttps.js";
 
 describe.sequential("Caddy reverse proxy /engine/*", () => {
+  let network;
   const backendContainerName = "backend-mock-for-redirection" 
   const backendContainerPort = 5001
   let backend;
@@ -13,7 +14,7 @@ describe.sequential("Caddy reverse proxy /engine/*", () => {
   let httpsPort;
 
   beforeAll(async () => {
-    const network = await new Network().start();
+    network = await new Network().start()
     backend = await startBackendMock({containerName: backendContainerName, containerPort: backendContainerPort, network});
 
     caddy = await startCaddy({
@@ -29,6 +30,7 @@ describe.sequential("Caddy reverse proxy /engine/*", () => {
   afterAll(async () => {
     if (backend?.container) await backend.container.stop({ remove: true });
     if (caddy?.container) await caddy.container.stop({ remove: true });
+    if (network) await network.stop({ remove: true });
   });
 
   it("should strip /engine and forward request with correct headers", async () => {

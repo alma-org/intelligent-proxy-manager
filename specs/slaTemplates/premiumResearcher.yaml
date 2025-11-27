@@ -2,7 +2,6 @@ sla4oas: 1.0.0
 context:
   id: proResearcher1
   type: agreement
-  "x-nignx-burst": 0
   api:
     $ref: ../hpc-oas.yaml
   provider: ISAGroup
