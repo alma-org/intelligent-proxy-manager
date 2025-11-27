@@ -33,7 +33,7 @@ if (apikeys.length !== clients.length) {
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
-describe.sequential("Nginx reverse proxy + mock backend", () => {
+describe.sequential("Nginx endpoints following happy path (one req per path and apikey) with mock backend", () => {
   const backendContainerName = "backend-llm-mock-for-redirection";
   const backendContainerPort = 8000;
   let nginx;
