@@ -67,9 +67,9 @@ describe("Nginx reverse proxy + mock backend", () => {
   });
 
   afterAll(async () => {
-    if (nginx?.container) await nginx.container.stop();
-    if (backend?.container) await backend.container.stop();
-    if (network) await network.stop();
+    if (nginx?.container) await nginx.container.stop({ remove: true });
+    if (backend?.container) await backend.container.stop({ remove: true });
+    if (network) await network.stop({ remove: true });
   });
 
   mapEntries.forEach(({ apikey, client }) => {

@@ -6,7 +6,8 @@ import { Network } from "testcontainers";
 import { startNginxFromFile } from "./helpers/startNginxFromFile.js";
 import { startMockLLMBackend } from "./helpers/startMockLLMBackend.js";
 import { generateTestNginxConf } from "./helpers/generateTestNginxConf.js";
-import logger from "../logger.js"
+import logger from "../logger.js";
+import { sleep } from "../utils/sleep.js";
 
 const confPath = process.env.NGINX_FILE_TO_TEST;
 if (!confPath || !fs.existsSync(confPath)) {
@@ -16,13 +17,21 @@ if (!confPath || !fs.existsSync(confPath)) {
 const conf = fs.readFileSync(confPath, "utf-8");
 const apikeyRegex = /~\(\s*([a-f0-9]+)\s*\)/g;
 const clientRegex = /"\s*([a-zA-Z0-9_\-]+)\s*"/g;
+const limitReqRegex = /zone=([a-zA-Z0-9_\-]+):[0-9a-z]+ rate=(\d+)r\/m/g;
 
 const apikeys = [];
 const clients = [];
+const limits = {};
+
 let match;
 while ((match = apikeyRegex.exec(conf)) !== null) apikeys.push(match[1].trim());
 while ((match = clientRegex.exec(conf)) !== null) {
   if (!match[1].match(/^[a-f0-9]+$/)) clients.push(match[1].trim());
+}
+while ((match = limitReqRegex.exec(conf)) !== null) {
+  const zone = match[1].trim();
+  const rate = parseInt(match[2]);
+  limits[zone] = rate;
 }
 
 if (apikeys.length !== clients.length) {
@@ -31,9 +40,10 @@ if (apikeys.length !== clients.length) {
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
-describe("Nginx reverse proxy + mock backend", () => {
-  const backendContainerName = "backend-llm-mock-for-redirection";
+describe("Nginx reverse proxy 429 with mock backend (validate 200 before limit)", () => {
+  const backendContainerName = "backend-llm-mock-for-redirection-429";
   const backendContainerPort = 8000;
+  const nginxContainerName = `nginx-test-429-with-backend-${Date.now()}`
   let nginx;
   let backend;
   let port;
@@ -57,23 +67,24 @@ describe("Nginx reverse proxy + mock backend", () => {
     nginx = await startNginxFromFile({
       nginxConfPath: testConf,
       nginxPort: 8080,
-      network
+      network,
+      containerName: nginxContainerName
     });
 
     port = nginx.httpPort;
   });
 
   afterAll(async () => {
-    if (nginx?.container) await nginx.container.stop();
-    if (backend?.container) await backend.container.stop();
-    if (network) await network.stop();
+    if (nginx?.container) await nginx.container.stop({ remove: true });
+    if (backend?.container) await backend.container.stop({ remove: true });
+    if (network) await network.stop({ remove: true });
   });
 
   mapEntries.forEach(({ apikey, client }) => {
     const endpoint = `/v1/chat/completions`;
+    const maxRequests = limits[`${client}_v1chatcompletions_POST`];
 
-    it(`should redirect POST ${endpoint} to the mock backend with apikey ${apikey} and return 200`, async () => {
-      logger.debug(`testing ${endpoint} with api key ${apikey}`)
+    it(`should return 200 for the first ${maxRequests} requests and 429 afterwards at ${endpoint}`, async () => {
       const body = JSON.stringify({
         model: "Qwen/Qwen2.5-Coder-32B-Instruct",
         messages: [
@@ -82,50 +93,67 @@ describe("Nginx reverse proxy + mock backend", () => {
         ]
       });
 
-      const res = await new Promise((resolve) => {
-        const req = http.request(
-          {
-            hostname: "127.0.0.1",
-            port,
-            path: endpoint,
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Content-Length": Buffer.byteLength(body),
-              "apikey": apikey
-            }
-          },
-          resolve
-        );
+      let response;
 
-        req.write(body);
-        req.end();
-      });
+      for (let i = 0; i < maxRequests + 1; i++) {
+        response = await new Promise(resolve => {
+          const req = http.request(
+            {
+              hostname: "127.0.0.1",
+              port,
+              path: endpoint,
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(body),
+                "apikey": apikey
+              }
+            },
+            resolve
+          );
+          req.write(body);
+          req.end();
+        });
 
-      expect(res.statusCode).toBe(200);
+        const expectingLimitExceeded = i >= maxRequests;
 
-      const data = await new Promise((resolve) => {
-        let raw = "";
-        res.on("data", (chunk) => (raw += chunk));
-        res.on("end", () => resolve(raw));
-      });
+        logger.debug(`[${client}] req ${i + 1}/${maxRequests} → status ${response.statusCode}`);
 
-      const json = JSON.parse(data);
+        if (!expectingLimitExceeded) {
+          expect(response.statusCode).toBe(200);
 
-      expect(json).toHaveProperty("id");
-      expect(json).toHaveProperty("object", "chat.completion");
-      expect(json).toHaveProperty("created");
-      expect(json).toHaveProperty("model", "Qwen/Qwen2.5-Coder-32B-Instruct");
-      expect(json).toHaveProperty("choices");
-      expect(Array.isArray(json.choices)).toBe(true);
-      expect(json.choices[0]).toHaveProperty("index", 0);
-      expect(json.choices[0]).toHaveProperty("message");
-      expect(json.choices[0].message).toHaveProperty("role", "assistant");
-      expect(json.choices[0].message).toHaveProperty("content");
-      expect(json).toHaveProperty("usage");
-      expect(json.usage).toHaveProperty("prompt_tokens");
-      expect(json.usage).toHaveProperty("total_tokens");
-      expect(json.usage).toHaveProperty("completion_tokens");
+          let data = await new Promise(res => {
+            let chunks = "";
+            response.on("data", chunk => (chunks += chunk));
+            response.on("end", () => res(chunks));
+          });
+
+          const json = JSON.parse(data);
+
+          expect(json).toHaveProperty("id");
+          expect(json).toHaveProperty("object", "chat.completion");
+          expect(json).toHaveProperty("created");
+          expect(json).toHaveProperty("model", "Qwen/Qwen2.5-Coder-32B-Instruct");
+          expect(json).toHaveProperty("choices");
+          expect(Array.isArray(json.choices)).toBe(true);
+          expect(json.choices[0]).toHaveProperty("index", 0);
+          expect(json.choices[0]).toHaveProperty("message");
+          expect(json.choices[0].message).toHaveProperty("role", "assistant");
+          expect(json.choices[0].message).toHaveProperty("content");
+          expect(json).toHaveProperty("usage");
+          expect(json.usage).toHaveProperty("prompt_tokens");
+          expect(json.usage).toHaveProperty("total_tokens");
+          expect(json.usage).toHaveProperty("completion_tokens");
+
+        } else {
+          expect(response.statusCode).toBe(429);
+        }
+
+        await sleep(1000);
+      }
+
+
+
     });
   });
 });

@@ -16,7 +16,7 @@ describe("Nginx runs with provided config", () => {
   });
 
   afterAll(async () => {
-    if (instance?.container) await instance.container.stop();
+    if (instance?.container) await instance.container.stop({ remove: true });
   });
 
   it("should start the container without crashing", async () => {

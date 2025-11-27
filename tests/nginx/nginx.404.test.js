@@ -39,7 +39,7 @@ describe("Nginx endpoints not found", () => {
   });
 
   afterAll(async () => {
-    if (instance?.container) await instance.container.stop();
+    if (instance?.container) await instance.container.stop({ remove: true });
   });
 
   mapEntries.forEach(({ apikey, client }) => {

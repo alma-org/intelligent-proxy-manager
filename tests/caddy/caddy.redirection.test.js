@@ -27,8 +27,8 @@ describe("Caddy reverse proxy /engine/*", () => {
   });
 
   afterAll(async () => {
-    if (backend?.container) await backend.container.stop();
-    if (caddy?.container) await caddy.container.stop();
+    if (backend?.container) await backend.container.stop({ remove: true });
+    if (caddy?.container) await caddy.container.stop({ remove: true });
   });
 
   it("should strip /engine and forward request with correct headers", async () => {

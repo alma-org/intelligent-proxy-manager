@@ -20,7 +20,7 @@ describe("Caddy HTTPS", () => {
   });
 
   afterAll(async () => {
-    if (container) await container.stop();
+    if (container) await container.stop({ remove: true });
   });
 
   it("should serve HTTPS correctly", async () => {
