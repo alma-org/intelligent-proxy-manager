@@ -37,12 +37,16 @@ if (apikeys.length !== clients.length) {
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
-describe("Nginx SLA limit tests (429)", () => {
+describe.sequential("Nginx SLA limit tests (429)", () => {
   let instance;
   let port;
 
   beforeAll(async () => {
-    instance = await startNginxFromFile({ nginxConfPath: confPath, nginxPort: process.env.NGINX_PORT, containerName: nginxContainerName  });
+    instance = await startNginxFromFile({
+      nginxConfPath: confPath,
+      nginxPort: process.env.NGINX_PORT,
+      containerName: nginxContainerName
+    });
     port = instance.httpPort;
   });
 
@@ -63,10 +67,10 @@ describe("Nginx SLA limit tests (429)", () => {
         ]
       });
 
-      let lastResponse;
+      let response;
 
-      for (let i = 0; i < maxRequests + 2; i++) {
-        lastResponse = await new Promise(resolve => {
+      for (let i = 0; i < maxRequests + 1; i++) {
+        response = await new Promise((resolve, reject) => {
           const req = http.request(
             {
               hostname: "127.0.0.1",
@@ -79,15 +83,28 @@ describe("Nginx SLA limit tests (429)", () => {
                 "apikey": apikey
               }
             },
-            resolve
+            res => {
+              let data = "";
+              res.on("data", chunk => (data += chunk));
+              res.on("end", () => resolve({ statusCode: res.statusCode, body: data }));
+            }
           );
+          req.on("error", reject);
           req.write(body);
           req.end();
         });
+
+        const expectingLimitExceeded = i >= maxRequests;
+        logger.debug(`[${client}] req ${i + 1}/${maxRequests} → status ${response.statusCode}`);
+
+        if (!expectingLimitExceeded) {
+          expect(response.statusCode).toBe(200);
+        } else {
+          logger.debug(`Endpoint ${endpoint} exceeded SLA with apikey ${apikey}, got status ${response.statusCode} after ${maxRequests} requests`);
+          expect(response.statusCode).toBe(429);
+        }
       }
 
-      logger.debug(`Endpoint ${endpoint} exceeded SLA with apikey ${apikey}, got status ${lastResponse.statusCode} making ${maxRequests} requests`);
-      expect(lastResponse.statusCode).toBe(429);
     });
   });
 });

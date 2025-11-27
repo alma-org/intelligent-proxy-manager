@@ -5,7 +5,7 @@ import { startBackendMock } from "./helpers/startBackendMock.js";
 import { startCaddy } from "./helpers/startCaddyContainer.js";
 import { waitForHttps } from "./helpers/waitForHttps.js";
 
-describe("Caddy reverse proxy /engine/*", () => {
+describe.sequential("Caddy reverse proxy /engine/*", () => {
   const backendContainerName = "backend-mock-for-redirection" 
   const backendContainerPort = 5001
   let backend;

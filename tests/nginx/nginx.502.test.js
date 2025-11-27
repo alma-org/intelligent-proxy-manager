@@ -29,7 +29,7 @@ if (apikeys.length !== clients.length) {
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
-describe("Nginx endpoints following happy path (one req per path and apikey)", () => {
+describe.sequential("Nginx endpoints following happy path (one req per path and apikey)", () => {
   let instance;
   let port;
 

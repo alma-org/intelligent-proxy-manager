@@ -29,7 +29,7 @@ if (apikeys.length !== clients.length) {
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
-describe("Nginx endpoints not found", () => {
+describe.sequential("Nginx endpoints not found", () => {
   let instance;
   let port;
 

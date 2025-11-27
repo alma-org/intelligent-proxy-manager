@@ -40,7 +40,7 @@ if (apikeys.length !== clients.length) {
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
-describe("Nginx reverse proxy 429 with mock backend (validate 200 before limit)", () => {
+describe.sequential("Nginx reverse proxy 429 with mock backend (validate 200 before limit)", () => {
   const backendContainerName = "backend-llm-mock-for-redirection-429";
   const backendContainerPort = 8000;
   const nginxContainerName = `nginx-test-429-with-backend-${Date.now()}`
@@ -149,7 +149,7 @@ describe("Nginx reverse proxy 429 with mock backend (validate 200 before limit)"
           expect(response.statusCode).toBe(429);
         }
 
-        await sleep(1000);
+        // await sleep(1000);
       }
 
 

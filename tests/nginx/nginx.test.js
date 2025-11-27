@@ -3,7 +3,7 @@ import net from "net";
 import http from "http";
 import { startNginxFromFile } from "./helpers/startNginxFromFile.js";
 
-describe("Nginx runs with provided config", () => {
+describe.sequential("Nginx runs with provided config", () => {
   let instance;
   let port;
 

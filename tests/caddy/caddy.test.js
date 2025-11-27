@@ -3,7 +3,7 @@ import { startCaddy } from "./helpers/startCaddyContainer.js";
 import { waitForHttps } from "./helpers/waitForHttps.js";
 import { waitForHttp } from "./helpers/waitForHttp.js";
 
-describe("Caddy HTTPS", () => {
+describe.sequential("Caddy HTTPS", () => {
   let container;
   let httpsPort;
   let httpPort;
