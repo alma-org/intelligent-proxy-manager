@@ -35,7 +35,7 @@ const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
 describe.sequential("Nginx endpoints following happy path (one req per path and apikey) with mock backend", () => {
   const backendContainerName = "backend-llm-mock-for-redirection";
-  const backendContainerPort = 8000;
+  const backendContainerPort = 8008;
   let nginx;
   let backend;
   let port;

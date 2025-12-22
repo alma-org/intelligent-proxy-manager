@@ -42,7 +42,7 @@ const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
 
 describe.sequential("Nginx reverse proxy 429 with mock backend (validate 200 before limit)", () => {
   const backendContainerName = "backend-llm-mock-for-redirection-429";
-  const backendContainerPort = 8000;
+  const backendContainerPort = 8008;
   const nginxContainerName = `nginx-test-429-with-backend-${Date.now()}`
   let nginx;
   let backend;
