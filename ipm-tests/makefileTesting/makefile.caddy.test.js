@@ -20,4 +20,25 @@ describe('Makefile Caddy Tests', () => {
     const { stdout } = await runMake('caddy_current_config');
     expect(stdout).toContain('=== Current Caddy Configuration ===');
   });
+
+  it('caddy_reload_config should attempt to reload config', async () => {
+    const { stdout } = await runMake('caddy_reload_config');
+    expect(stdout).toContain('=== Reloading caddy config ===');
+  });
+
+  it('caddy_replace_config should attempt to replace config', async () => {
+    const { stdout } = await runMake('caddy_replace_config');
+    expect(stdout).toContain('=== Replacing caddy configuration');
+  });
+
+  it('caddy_show_initial_html should attempt to show initial html', async () => {
+    const { stdout } = await runMake('caddy_show_initial_html');
+    expect(stdout).toContain('=== Initial html served by Caddy ===');
+  });
+
+  it('caddy_logs should attempt to show logs', async () => {
+    const { stdout } = await runMake('caddy_logs');
+    expect(stdout).toContain('=== Caddy Logs ===');
+  });
 });
+
