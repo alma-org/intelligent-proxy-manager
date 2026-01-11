@@ -124,6 +124,10 @@ create_nginx_config:  ## Generate nginx.conf file from SLAs
 	@ echo "Ensuring nginx listens on port 8080 instead of 80 ;"
 	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/listen 80;/g, 'listen 8080;'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
 	@ echo "...REPLACE 2 DONE"
+	@ echo "Checking SLAs..."
+	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_TARGET_CONFIG)) 2>/dev/null || echo $(abspath $(NGINX_TARGET_CONFIG)))" npm test
+	cd ..
+
 
 replace_nginx_config:  ## Its as create_nginx_config but it replaces the current configuration by the new one and reloads nginx proxy to update changes
 	@ echo "Creating proxy configuration file with sla-wizard for nginx"
@@ -135,6 +139,9 @@ replace_nginx_config:  ## Its as create_nginx_config but it replaces the current
 	@ echo "Ensuring nginx listens on port 8080 instead of 80 ;"
 	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/listen 80;/g, 'listen 8080;'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
 	@ echo "...REPLACE 2 DONE"
+	@ echo "Checking SLAs..."
+	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_TARGET_CONFIG)) 2>/dev/null || echo $(abspath $(NGINX_TARGET_CONFIG)))" npm test
+	cd ..
 	@ echo "Verifying nginx.conf syntax"
 	docker exec "${NGINX_CONTAINER}" nginx -t
 	@ echo "Reload nginx service"
