@@ -1,2 +1,4 @@
 id,email,name
 1,existingbasicuser1@us.es,"Existing basic user 1"
+2,newuserbasic1@us.es,"New basic user 1"
+3,newuserbasic2@us.es,"New basic user 2"
