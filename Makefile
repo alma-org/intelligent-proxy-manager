@@ -6,6 +6,7 @@ OAS_PATH ?= ./specs/hpc-oas.yaml
 SLAS_PATH ?=./specs/slas
 NGINX_CONF_PATH ?= ./nginx.conf
 NGINX_CONTAINER ?= sla-proxy
+NGINX_TARGET_CONFIG ?= ../nginxConf/nginx.conf
 
 
 .DEFAULT_GOAL := help
@@ -122,10 +123,10 @@ create_nginx_config:  ## Generate nginx.conf file from SLAs
 		--outFile ${NGINX_CONF_PATH} ; \
 	echo "...DONE" ; \
 	echo "Replacing localhost:8000 → host.docker.internal:8000" ; \
-	sed -i 's|localhost:8000|127.0.0.1:8000|g' ../nginxConf/nginx.conf ; \
+	sed -i 's|localhost:8000|127.0.0.1:8000|g' $(NGINX_TARGET_CONFIG) ; \
 	echo "...DONE" ; \
 	echo "Ensuring nginx listens on port 8080 instead of 80 ;" \
-	sed -i 's|listen 80;|listen 8080;|g' ../nginxConf/nginx.conf ; \
+	sed -i 's|listen 80;|listen 8080;|g' $(NGINX_TARGET_CONFIG) ; \
 	echo "...DONE" ; \
 
 replace_nginx_config:  ## Its as create_nginx_config but it replaces the current configuration by the new one and reloads nginx proxy to update changes
@@ -133,13 +134,13 @@ replace_nginx_config:  ## Its as create_nginx_config but it replaces the current
 	node ${SLA_WIZARD_PATH}/src/index.js config --authLocation ${AUTH_LOCATION} nginx \
 		--oas ${OAS_PATH} \
 		--sla ${SLAS_PATH} \
-		--outFile ../nginxConf/nginx.conf ; \
+		--outFile $(NGINX_TARGET_CONFIG) ; \
 	echo "...DONE" ; \
 	echo "Replacing localhost:8000 → host.docker.internal:8000" ; \
-	sed -i 's|localhost:8000|127.0.0.1:8000|g' ../nginxConf/nginx.conf ; \
+	sed -i 's|localhost:8000|127.0.0.1:8000|g' $(NGINX_TARGET_CONFIG) ; \
 	echo "...DONE" ; \
 	echo "Ensuring nginx listens on port 8080 instead of 80 ;" \
-	sed -i 's|listen 80;|listen 8080;|g' ../nginxConf/nginx.conf ; \
+	sed -i 's|listen 80;|listen 8080;|g' $(NGINX_TARGET_CONFIG) ; \
 	echo "...DONE" ; \
 	echo "Verifying nginx.conf syntax" ; \
 	docker exec sla-proxy nginx -t ; \
