@@ -97,8 +97,8 @@ docker_status:  ## Show active and all Docker containers
 # Low-level maintenance: SLA generation and nginx config
 # =====================================================
 
-create_slas_using_template:  ## Generate SLAs using an SLA template and a csv with the users
-	@ echo "# Creating SLAs with sla-wizard using the given template..." ; \
+create_slas_using_template:  ## Generate or update SLAs using an SLA template and a csv with the users (preserves existing API keys)
+	@ echo "# Creating/updating SLAs with sla-wizard using the given template..." ; \
 	if [ "${TEMPLATE_PATH}" = "" ]; then \
 	echo "No template set. Please specify a template using TEMPLATE_PATH option"; \
 	exit 1; \
@@ -111,8 +111,8 @@ create_slas_using_template:  ## Generate SLAs using an SLA template and a csv wi
 	echo "Please enter a path for the file containing user-keys correspondence. Use USER_KEYS_JSON_PATH option"; \
 	exit 1; \
 	fi
-	node ${SLA_WIZARD_PATH}/src/index.js generate-slas --slaTemplate ${TEMPLATE_PATH} --csv ${USERS_CSV_PATH} --outDir ${SLAS_PATH} --numKeys ${NUM_KEYS_PER_USER} --mappingFile ${USER_KEYS_JSON_PATH} ; \
-	@ echo "# SLAs created" ; \
+	node ${SLA_WIZARD_PATH}/src/index.js generate-slas --slaTemplate ${TEMPLATE_PATH} --csv ${USERS_CSV_PATH} --outDir ${SLAS_PATH} --numKeys ${NUM_KEYS_PER_USER} --mappingFile ${USER_KEYS_JSON_PATH} --existingSLAs ${SLAS_PATH} ; \
+	@ echo "# SLAs created/updated" ; \
 
 create_nginx_config:  ## Generate nginx.conf file from SLAs
 	@ echo "Creating proxy configuration file with sla-wizard for nginx" ; \
@@ -145,4 +145,3 @@ replace_nginx_config:  ## Its as create_nginx_config but it replaces the current
 	docker exec sla-proxy nginx -t ; \
 	echo "Reload nginx service" ; \
 	docker exec sla-proxy nginx -s reload ; \
-
