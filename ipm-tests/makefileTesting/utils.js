@@ -42,17 +42,13 @@ export async function createMakeRunner() {
       }
       
       const command = `${makeCommand} -f Makefile ${actualTarget} ${makeVars}`;
-      
-      const debugLog = `--- EXECUTING COMMAND ---\nCommand: ${command}\nCWD: ${makeDir}\n`;
-      fs.appendFileSync('makefile_exec_debug.log', debugLog);
-      
+
       exec(command, { 
         cwd: makeDir,
         env: { ...process.env },
         maxBuffer: 1024 * 1024 * 10
       }, (error, stdout, stderr) => {
         const execResult = `STDOUT:\n${stdout}\nSTDERR:\n${stderr}\nERROR:\n${error ? error.message : 'null'}\n\n`;
-        fs.appendFileSync('makefile_exec_debug.log', execResult);
         resolve({ error, stdout, stderr });
       });
     });
