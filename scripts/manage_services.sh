@@ -1,0 +1,2 @@
+sudo systemctl start ssh_tunnel_puerto_3000.service
+sudo systemctl restart ssh_tunnel_puerto_3000.service
