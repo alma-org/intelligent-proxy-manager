@@ -1,0 +1,8 @@
+{
+  "existingbasicuser1@us.es": {
+    "apikeys": [
+      "1b0e1bfa203530d43a0bd8461aa018b7"
+    ],
+    "slaFile": "specs/slas/sla_existingbasicuser1_us_es.yaml"
+  }
+}

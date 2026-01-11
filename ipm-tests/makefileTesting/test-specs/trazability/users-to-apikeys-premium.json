@@ -1,0 +1,14 @@
+{
+  "existingpremiumuser1@us.es": {
+    "apikeys": [
+      "a37d46342af87c26780cd7820178ab9c"
+    ],
+    "slaFile": "specs/slas/sla_existingpremiumuser1_us_es.yaml"
+  },
+  "existingpremiumuser2@us.es": {
+    "apikeys": [
+      "6521788b3d75f416d5b10627cdf417ad"
+    ],
+    "slaFile": "specs/slas/sla_existingpremiumuser2_us_es.yaml"
+  }
+}
