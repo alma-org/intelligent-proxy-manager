@@ -1,16 +1,15 @@
-import { describe, it, expect } from 'vitest';
 import { exec } from 'child_process';
 import path from 'path';
-
-import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-describe('Makefile Tests', () => {
+export async function createMakeRunner() {
   const makefilePath = path.resolve(__dirname, '../../Makefile');
   const makeDir = path.dirname(makefilePath);
+  
   let makeCommand = 'make';
   let env = { ...process.env };
 
@@ -32,30 +31,12 @@ describe('Makefile Tests', () => {
     }
   }
 
-  const runMake = (target) => {
-    return new Promise((resolve, reject) => {
+  return (target) => {
+    return new Promise((resolve) => {
       exec(`${makeCommand} -f Makefile ${target}`, { cwd: makeDir, env }, (error, stdout, stderr) => {
-        if (error) {
-          reject({ error, stderr });
-        } else {
-          resolve(stdout);
-        }
+        // Resolve with all details, don't reject, so tests can assert on errors if expected
+        resolve({ error, stdout, stderr });
       });
     });
   };
-
-  it('make help should run successfully and show available targets', async () => {
-    const stdout = await runMake('help');
-    expect(stdout).toContain('Available Makefile targets:');
-    expect(stdout).toContain('help');
-    expect(stdout).toContain('list');
-  });
-
-  it('make list should run successfully and list targets', async () => {
-    const stdout = await runMake('list');
-    // Check for some known targets
-    expect(stdout).toContain('help');
-    expect(stdout).toContain('list');
-    // We expect it NOT to crash or error
-  });
-});
+}
