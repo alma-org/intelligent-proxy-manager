@@ -5,3 +5,4 @@ openssl.cnf
 test-cert.pem
 test-key.pem
 nginx.test.mockllm.conf
+temp-test-specs

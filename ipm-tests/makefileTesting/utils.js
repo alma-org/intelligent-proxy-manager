@@ -14,28 +14,48 @@ export async function createMakeRunner() {
   let env = { ...process.env };
 
   if (process.platform === 'win32') {
-    makeCommand = 'mingw32-make';
-    // Attempt to find git-bash / usr / bin to add to path for grep, awk, etc.
-    const commonPaths = [
-      'C:\\Program Files\\Git\\usr\\bin',
-      'C:\\Program Files\\Git\\bin',
-      'C:\\Users\\pc\\AppData\\Local\\Programs\\Git\\usr\\bin',
-      'C:\\Users\\pc\\AppData\\Local\\Programs\\Git\\bin',
-    ];
-    
-    for (const p of commonPaths) {
-      if (fs.existsSync(p)) {
-        env.PATH = p + path.delimiter + env.PATH;
-        break; 
-      }
+    const gitBinPath = 'C:\\Program Files\\Git\\usr\\bin';
+    const gitBinPath2 = 'C:\\Program Files\\Git\\bin';
+    if (fs.existsSync(gitBinPath)) {
+      env.PATH = gitBinPath + path.delimiter + gitBinPath2 + path.delimiter + env.PATH;
+      env.SHELL = 'sh.exe';
     }
+  }
+
+  const nodeDir = path.dirname(process.execPath);
+  if (!env.PATH.includes(nodeDir)) {
+    env.PATH = nodeDir + path.delimiter + env.PATH;
   }
 
   return (target) => {
     return new Promise((resolve) => {
-      exec(`${makeCommand} -f Makefile ${target}`, { cwd: makeDir, env }, (error, stdout, stderr) => {
-        // Resolve with all details, don't reject, so tests can assert on errors if expected
-        resolve({ error, stdout, stderr });
+      const parts = target.split(' ');
+      const targetEnv = { ...env };
+      let actualTarget = '';
+      
+      for (const part of parts) {
+        if (part.includes('=') && !actualTarget) {
+          const [key, ...valueParts] = part.split('=');
+          let value = valueParts.join('=');
+          value = value.replace(/^["']|["']$/g, '');
+          targetEnv[key] = value;
+          
+        } else {
+          actualTarget += (actualTarget ? ' ' : '') + part;
+        }
+      }
+      
+      let command;
+      if (process.platform === 'win32') {
+        makeCommand = 'mingw32-make';
+        command = `${makeCommand} -f Makefile ${actualTarget} SHELL=sh.exe`;
+      } else {
+        command = `make -f Makefile ${actualTarget}`;
+      }
+      
+      exec(command, { cwd: makeDir, env: targetEnv }, (error, stdout, stderr) => {
+        const actualError = stdout && stdout.trim().length > 0 ? null : error;
+        resolve({ error: actualError, stdout, stderr });
       });
     });
   };
