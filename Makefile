@@ -1,4 +1,5 @@
-SLA_WIZARD_PATH ?= ../sla-wizard/
+NODE_CMD ?= node
+SLA_WIZARD_PATH ?= ../sla-wizard
 AUTH_LOCATION ?= header
 NUM_KEYS_PER_USER ?= 1
 DOCKER_COMPOSE_NGINX ?= ./docker-compose/docker-compose-nginx-hpc.yaml
@@ -26,8 +27,6 @@ list: ## List all available commands
 	@grep -oE '^[a-zA-Z0-9._-]+:' Makefile | sed 's/://' | sort | uniq
 
 ## Caddy and nginx stuff for high level maintenance
-
-## Caddy stuff
 
 caddy_status:  ## Show the current status of the Caddy service
 	@echo "=== Caddy status ==="
@@ -116,33 +115,27 @@ create_slas_using_template:  ## Generate or update SLAs using an SLA template an
 	@ echo "# SLAs created/updated" ; \
 
 create_nginx_config:  ## Generate nginx.conf file from SLAs
-	@ echo "Creating proxy configuration file with sla-wizard for nginx" ; \
-	node ${SLA_WIZARD_PATH}/src/index.js config --authLocation ${AUTH_LOCATION} nginx \
-		--oas ${OAS_PATH} \
-		--sla ${SLAS_PATH} \
-		--outFile ${NGINX_CONF_PATH} ; \
-	echo "...DONE" ; \
-	echo "Replacing localhost:8000 → host.docker.internal:8000" ; \
-	sed -i 's|localhost:8000|127.0.0.1:8000|g' $(NGINX_TARGET_CONFIG) ; \
-	echo "...DONE" ; \
-	echo "Ensuring nginx listens on port 8080 instead of 80 ;" \
-	sed -i 's|listen 80;|listen 8080;|g' $(NGINX_TARGET_CONFIG) ; \
-	echo "...DONE" ; \
+	@ echo "Creating proxy configuration file with sla-wizard for nginx"
+	"$(NODE_CMD)" "${SLA_WIZARD_PATH}/src/index.js" config --authLocation "${AUTH_LOCATION}" nginx --oas "${OAS_PATH}" --sla "${SLAS_PATH}" --outFile "${NGINX_CONF_PATH}"
+	@ echo "...NODE DONE"
+	@ echo "Replacing localhost:8000 -> host.docker.internal:8000"
+	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/localhost:8000/g, '127.0.0.1:8000'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
+	@ echo "...REPLACE 1 DONE"
+	@ echo "Ensuring nginx listens on port 8080 instead of 80 ;"
+	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/listen 80;/g, 'listen 8080;'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
+	@ echo "...REPLACE 2 DONE"
 
 replace_nginx_config:  ## Its as create_nginx_config but it replaces the current configuration by the new one and reloads nginx proxy to update changes
-	@ echo "Creating proxy configuration file with sla-wizard for nginx" ; \
-	node ${SLA_WIZARD_PATH}/src/index.js config --authLocation ${AUTH_LOCATION} nginx \
-		--oas ${OAS_PATH} \
-		--sla ${SLAS_PATH} \
-		--outFile $(NGINX_TARGET_CONFIG) ; \
-	echo "...DONE" ; \
-	echo "Replacing localhost:8000 → host.docker.internal:8000" ; \
-	sed -i 's|localhost:8000|127.0.0.1:8000|g' $(NGINX_TARGET_CONFIG) ; \
-	echo "...DONE" ; \
-	echo "Ensuring nginx listens on port 8080 instead of 80 ;" \
-	sed -i 's|listen 80;|listen 8080;|g' $(NGINX_TARGET_CONFIG) ; \
-	echo "...DONE" ; \
-	echo "Verifying nginx.conf syntax" ; \
-	docker exec sla-proxy nginx -t ; \
-	echo "Reload nginx service" ; \
-	docker exec sla-proxy nginx -s reload ; \
+	@ echo "Creating proxy configuration file with sla-wizard for nginx"
+	"$(NODE_CMD)" "${SLA_WIZARD_PATH}/src/index.js" config --authLocation "${AUTH_LOCATION}" nginx --oas "${OAS_PATH}" --sla "${SLAS_PATH}" --outFile "${NGINX_TARGET_CONFIG}"
+	@ echo "...NODE DONE"
+	@ echo "Replacing localhost:8000 -> host.docker.internal:8000"
+	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/localhost:8000/g, '127.0.0.1:8000'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
+	@ echo "...REPLACE 1 DONE"
+	@ echo "Ensuring nginx listens on port 8080 instead of 80 ;"
+	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/listen 80;/g, 'listen 8080;'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
+	@ echo "...REPLACE 2 DONE"
+	@ echo "Verifying nginx.conf syntax"
+	docker exec "${NGINX_CONTAINER}" nginx -t
+	@ echo "Reload nginx service"
+	docker exec "${NGINX_CONTAINER}" nginx -s reload

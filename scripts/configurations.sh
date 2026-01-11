@@ -19,3 +19,17 @@ make create_slas_using_template TEMPLATE_PATH=./specs/slaTemplates/premiumResear
 
 # generate nginx configuration for users
 make replace_nginx_config
+
+# ==== CREATE NEW NGINX.CONF FROM SLAS ====
+
+# In windows
+C:\Strawberry\c\bin\mingw32-make.exe create_nginx_config NGINX_CONF_PATH=test_nginx.conf NGINX_TARGET_CONFIG=test_nginx.conf
+
+# Verify localhost replacement in windows
+Get-Content test_nginx.conf | Select-String "listen 8080", "127.0.0.1:8000"
+
+# In linux
+make create_nginx_config NGINX_CONF_PATH=test_nginx.conf NGINX_TARGET_CONFIG=test_nginx.conf
+
+# Verify localhost replacement in linux
+grep -E "listen 8080|127.0.0.1:8000" test_nginx.conf
