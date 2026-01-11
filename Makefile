@@ -139,3 +139,8 @@ replace_nginx_config:  ## Its as create_nginx_config but it replaces the current
 	docker exec "${NGINX_CONTAINER}" nginx -t
 	@ echo "Reload nginx service"
 	docker exec "${NGINX_CONTAINER}" nginx -s reload
+
+check_slas: ## runs tests to check if the SLAs defined in nginx.conf are valid.
+	@ echo "Checking SLAs..."
+	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_TARGET_CONFIG)) 2>/dev/null || echo $(abspath $(NGINX_TARGET_CONFIG)))" npm test
+	cd ..

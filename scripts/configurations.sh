@@ -33,3 +33,8 @@ make create_nginx_config NGINX_CONF_PATH=test_nginx.conf NGINX_TARGET_CONFIG=tes
 
 # Verify localhost replacement in linux
 grep -E "listen 8080|127.0.0.1:8000" test_nginx.conf
+
+# Check SLAs 
+make check_slas
+# if you need to specify a nginx.conf file use this  
+make check_slas NGINX_TARGET_CONFIG=../nginxConf/nginx2.conf
