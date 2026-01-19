@@ -1,0 +1,9 @@
+version: "3.9"
+
+services:
+  proxy:
+    image: nginx:1.23.2
+    container_name: sla-proxy-test
+    volumes:
+      - /home/operador/alma_core/nginxConf/testConf/nginx.conf:/etc/nginx/nginx.conf:ro
+    network_mode: host
