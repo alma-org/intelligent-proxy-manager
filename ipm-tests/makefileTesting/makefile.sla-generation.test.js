@@ -63,9 +63,12 @@ describe('Makefile SLA Generation Tests', () => {
   const normalizeMapping = (map) => {
     const normalized = {};
     for (const user in map) {
+      // Handle both forward and backward slashes for cross-platform compatibility
+      const slaFile = map[user].slaFile;
+      const baseName = slaFile.split(/[/\\]/).pop();
       normalized[user] = {
         ...map[user],
-        slaFile: path.basename(map[user].slaFile)
+        slaFile: baseName
       };
     }
     return normalized;

@@ -64,11 +64,11 @@ nginx_current_config:  ## Display the current nginx configuration
 	docker exec -it sla-proxy cat /etc/nginx/nginx.conf
 
 nginx_reload_config:
-	docker exec sla-proxy nginx -s reload ; \
+	docker exec sla-proxy nginx -s reload
 
 nginx_check_config:  ## Verify nginx configuration syntax
-	echo "Verifying nginx.conf syntax" ; \
-	docker exec sla-proxy nginx -t ; \
+	@echo "Verifying nginx.conf syntax"
+	docker exec sla-proxy nginx -t
 
 nginx_show_initial_html: ## Show the initial HTML served by nginx
 	@echo "=== Initial HTML served by Nginx ==="
@@ -98,21 +98,21 @@ docker_status:  ## Show active and all Docker containers
 # =====================================================
 
 create_slas_using_template:  ## Generate or update SLAs using an SLA template and a csv with the users (preserves existing API keys)
-	@ echo "# Creating/updating SLAs with sla-wizard using the given template..." ; \
-	if [ "${TEMPLATE_PATH}" = "" ]; then \
-	echo "No template set. Please specify a template using TEMPLATE_PATH option"; \
-	exit 1; \
+	@echo "# Creating/updating SLAs with sla-wizard using the given template..."
+	@if [ "${TEMPLATE_PATH}" = "" ]; then \
+		echo "No template set. Please specify a template using TEMPLATE_PATH option"; \
+		exit 1; \
 	fi
-	if [ "${USERS_CSV_PATH}" = "" ]; then \
-	echo "No user csv provided. Please enter an user csv using USERS_CSV_PATH option"; \
-	exit 1; \
+	@if [ "${USERS_CSV_PATH}" = "" ]; then \
+		echo "No user csv provided. Please enter an user csv using USERS_CSV_PATH option"; \
+		exit 1; \
 	fi
-	if [ "${USER_KEYS_JSON_PATH}" = "" ]; then \
-	echo "Please enter a path for the file containing user-keys correspondence. Use USER_KEYS_JSON_PATH option"; \
-	exit 1; \
+	@if [ "${USER_KEYS_JSON_PATH}" = "" ]; then \
+		echo "Please enter a path for the file containing user-keys correspondence. Use USER_KEYS_JSON_PATH option"; \
+		exit 1; \
 	fi
-	node ${SLA_WIZARD_PATH}/src/index.js generate-slas --slaTemplate ${TEMPLATE_PATH} --csv ${USERS_CSV_PATH} --outDir ${SLAS_PATH} --numKeys ${NUM_KEYS_PER_USER} --mappingFile ${USER_KEYS_JSON_PATH} --existingSLAs ${SLAS_PATH} ; \
-	@ echo "# SLAs created/updated" ; \
+	node ${SLA_WIZARD_PATH}/src/index.js generate-slas --slaTemplate ${TEMPLATE_PATH} --csv ${USERS_CSV_PATH} --outDir ${SLAS_PATH} --numKeys ${NUM_KEYS_PER_USER} --mappingFile ${USER_KEYS_JSON_PATH} --existingSLAs ${SLAS_PATH}
+	@echo "# SLAs created/updated"
 
 create_nginx_config:  ## Generate nginx.conf file from SLAs
 	@ echo "Creating proxy configuration file with sla-wizard for nginx"
