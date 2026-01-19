@@ -1,3 +1,8 @@
+# ==== COMMANDS TO START NGINX SERVERS ====
+
+docker compose -p nginx-test -f docker-compose-testnginx-hpc.yaml up -d
+docker compose -p nginx -f docker-compose-nginx-hpc.yaml up -d
+
 # ==== CONFIGURATION TO GENERATE NEW APIKEYS AND START NGINX SERVER ====
 
 # generate slas for basic users
