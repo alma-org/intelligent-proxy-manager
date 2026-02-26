@@ -25,7 +25,10 @@ export async function startBackendMock({containerName, containerPort = 3000, net
     .withExposedPorts(containerPort)
 
     if (network) {
-        container.withNetworkMode(network.getName());
+        container.withNetwork(network)
+                 .withNetworkAliases(containerName);
+    } else {
+        container.withName(containerName);
     }
 
     const startedContainer = await container.start();

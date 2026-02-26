@@ -16,7 +16,8 @@ export async function startCaddy({ backendPort = process.env.TEST_CADDY_MOCK_BAC
               .replace(/{{BACKEND_PORT}}/g, backendPort);
   
 
-  const tmpFile = path.join(baseDir, "Caddyfile.final");
+  const uniqueSuffix = Math.random().toString(36).substring(2, 9);
+  const tmpFile = path.join(baseDir, `Caddyfile.final.${uniqueSuffix}`);
   fs.writeFileSync(tmpFile, finalCaddyfile);
 
   const container = await new GenericContainer("caddy:latest")
@@ -30,7 +31,10 @@ export async function startCaddy({ backendPort = process.env.TEST_CADDY_MOCK_BAC
 
 
     if (network) {
-      container.withNetworkMode(network.getName());
+      container.withNetwork(network)
+               .withNetworkAliases("caddy");
+    } else {
+      container.withName(`caddy-test-${Date.now()}`);
     }
 
     const startedContainer = await container.start();
@@ -39,5 +43,6 @@ export async function startCaddy({ backendPort = process.env.TEST_CADDY_MOCK_BAC
     container: startedContainer,
     httpPort: startedContainer.getMappedPort(80),
     httpsPort: startedContainer.getMappedPort(443),
+    caddyfilePath: tmpFile
   };
 }
