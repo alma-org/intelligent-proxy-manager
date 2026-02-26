@@ -30,11 +30,8 @@ The test suite can be configured using a `.env` file in this directory.
 ## Test Structure
 
 ### 1. Integration Tests (`tests/integration`)
-The flagship test `caddy+nginx.test.js` verifies the complete proxy chain:
-**Client** (HTTPS) → **Caddy** (Proxy) → **Nginx** (Auth/Limits) → **Mock API**.
-- Validates SSL termination.
-- Verifies header forwarding and API key authentication.
-- Checks full-stack connectivity using a shared Docker network.
+- **`caddy+nginx.test.js`**: Verifies the basic complete proxy chain (Client -> Caddy -> Nginx -> Mock API).
+- **`caddy+nginx.429.test.js`**: Verifies automated SLA enforcement. It parses `nginx.conf` for API keys and rate limits, then validates that the full proxy chain correctly returns `429 Too Many Requests` when limits are exceeded.
 
 ### 2. Nginx Tests (`tests/nginx`)
 Isolated tests for Nginx behavior:
