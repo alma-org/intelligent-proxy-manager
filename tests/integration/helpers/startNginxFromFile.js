@@ -1,0 +1,36 @@
+import { GenericContainer } from "testcontainers";
+import fs from "fs";
+
+export async function startNginxFromFile({ nginxConfPath = process.env.NGINX_FILE_TO_TEST, nginxPort = process.env.NGINX_PORT, network, containerName = `nginx-test-${Date.now()}` }) {
+
+  if (!nginxConfPath) {
+    throw new Error("NGINX_FILE_TO_TEST env var is not set");
+  }
+
+  if (!fs.existsSync(nginxConfPath)) {
+    throw new Error(`NGINX_FILE_TO_TEST does not exist: ${nginxConfPath}`);
+  }
+
+  const container = new GenericContainer("nginx:latest")
+    .withCopyFilesToContainer([
+      {
+        source: nginxConfPath,
+        target: "/etc/nginx/nginx.conf"
+      }
+    ])
+    .withExposedPorts(nginxPort);
+
+    if (network) {
+        container.withNetwork(network)
+                 .withNetworkAliases(containerName);
+    } else {
+        container.withName(containerName);
+    }
+
+  const startedContainer = await container.start();
+
+  return {
+    container: startedContainer,
+    httpPort: startedContainer.getMappedPort(nginxPort),
+  };
+}
