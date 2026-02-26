@@ -1,141 +1,204 @@
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
-import { startCaddy } from "../caddy/helpers/startCaddyContainer.js";
-import { waitForHttps } from "../caddy/helpers/waitForHttps.js";
-import { waitForHttp } from "../caddy/helpers/waitForHttp.js";
+import { startCaddy } from "./helpers/startCaddyContainer.js";
+import { waitForHttps } from "./helpers/waitForHttps.js";
+import { waitForHttp } from "./helpers/waitForHttp.js";
 import net from "net";
 import http from "http";
 import https from "https";
-import { startNginxFromFile } from "../nginx/helpers/startNginxFromFile.js";
+import { startNginxFromFile } from "./helpers/startNginxFromFile.js";
+import { startMockLLMBackend } from "./helpers/startMockLLMBackend.js";
 import { Network } from "testcontainers";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { generateDevCertificates } from "../caddy/helpers/generateCerts.js";
 
-describe.sequential("Caddy HTTPS + Nginx listening", () => {
-  let network
-  let caddyContainer;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+describe.sequential("Caddy HTTPS + Nginx integration test", () => {
+  let network;
+  let caddy;
+  let nginx;
+  let mockBackend;
   let caddyHttpsPort;
   let caddyHttpPort;
-  let nginxContainer;
-  let port;
 
-  it("should run", () => {
-    expect(true).toBe(true);
+  let tempFiles = [];
+
+  beforeAll(async () => {
+    try {
+      const uniqueSuffix = Math.random().toString(36).substring(2, 9);
+      network = await new Network().start();
+      console.error("Network started:", network.getName());
+
+      const configDir = path.join(__dirname, "config");
+      
+      console.error("Generating certificates...");
+      generateDevCertificates({
+        dir: configDir,
+        domain: "alma.test"
+      });
+      tempFiles.push(path.join(configDir, "openssl.cnf"));
+      tempFiles.push(path.join(configDir, "test-cert.pem"));
+      tempFiles.push(path.join(configDir, "test-key.pem"));
+
+      const mockBackendName = `mock-backend-${uniqueSuffix}`;
+      const nginxName = `nginx-proxy-${uniqueSuffix}`;
+
+      console.error("Starting Mock Backend...");
+      mockBackend = await startMockLLMBackend({
+        containerName: mockBackendName,
+        containerPort: 8080,
+        network,
+      });
+      console.error("Mock Backend started");
+
+      const nginxConfPath = process.env.NGINX_FILE_TO_TEST || path.join(__dirname, "config", "nginx.conf");
+      if (!fs.existsSync(nginxConfPath)) {
+        throw new Error(`Nginx config file not found: ${nginxConfPath}`);
+      }
+      let nginxConf = fs.readFileSync(nginxConfPath, "utf8");
+      
+      // Replace any 127.0.0.1:PORT or mock-backend:8080 with the actual container name
+      nginxConf = nginxConf.replace(/(127\.0\.0\.1|mock-backend):\d+/g, `${mockBackendName}:8080`);
+      
+      const finalNginxConfPath = path.join(__dirname, "config", `nginx.conf.${uniqueSuffix}`);
+      fs.writeFileSync(finalNginxConfPath, nginxConf);
+      tempFiles.push(finalNginxConfPath);
+
+      console.error("Starting Nginx...");
+      nginx = await startNginxFromFile({
+        nginxConfPath: finalNginxConfPath,
+        nginxPort: 8080,
+        network,
+        containerName: nginxName,
+      });
+      console.error("Nginx started");
+
+      console.error("Starting Caddy...");
+      caddy = await startCaddy({
+        backendPort: 8080,
+        caddyRedirectionHost: nginxName,
+        network,
+        configDir: path.join(__dirname, "config")
+      });
+      if (caddy.caddyfilePath) tempFiles.push(caddy.caddyfilePath);
+      
+      caddyHttpsPort = caddy.httpsPort;
+      caddyHttpPort = caddy.httpPort;
+      console.error("Caddy started, mapped ports:", { caddyHttpsPort, caddyHttpPort });
+
+      console.error("Waiting for HTTPS...");
+      await waitForHttps({
+        port: caddyHttpsPort,
+        timeout: 60000,
+      });
+      console.error("HTTPS is ready");
+    } catch (error) {
+      console.error("Error in beforeAll:", error);
+      throw error;
+    }
+  }, 120000);
+
+  afterAll(async () => {
+    console.log("Cleaning up containers...");
+    try {
+      if (caddy?.container) await caddy.container.stop({ remove: true }).catch(err => console.warn("Error stopping caddy:", err.message));
+      if (nginx?.container) await nginx.container.stop({ remove: true }).catch(err => console.warn("Error stopping nginx:", err.message));
+      if (mockBackend?.container) await mockBackend.container.stop({ remove: true }).catch(err => console.warn("Error stopping mockBackend:", err.message));
+      if (network) await network.stop({ remove: true }).catch(err => console.warn("Error stopping network:", err.message));
+      
+      console.log("Cleaning up temporary config files...");
+      for (const file of tempFiles) {
+        if (fs.existsSync(file)) {
+          fs.unlinkSync(file);
+          console.log(`Deleted: ${file}`);
+        }
+      }
+    } catch (e) {
+      console.error("Final cleanup error:", e);
+    }
   });
-//   beforeAll(async () => {
-//     network = await new Network().start();
-//     nginxContainer = await startNginxFromFile({
-//       nginxConfPath: process.env.NGINX_FILE_TO_TEST,
-//       nginxPort: process.env.NGINX_PORT,
-//       network,
-//     });
-//     port = nginxContainer.httpPort;
 
-//     const backendPort = port;
+  it("should respond with 404 on the root (Caddy default)", async () => {
+    const res = await waitForHttps({ port: caddyHttpsPort });
+    expect(res.statusCode).toBe(404);
+  });
 
-//     const started = await startCaddy({ backendPort, network });
+  it("should redirect HTTP to HTTPS", async () => {
+    const res = await waitForHttp({ port: caddyHttpPort });
+    expect([301, 308]).toContain(res.statusCode);
+    expect(res.headers["location"]).toMatch(/^https:\/\//);
+  });
 
-//     caddyContainer = started.container;
-//     caddyHttpsPort = started.httpsPort;
-//     caddyHttpPort = started.httpPort;
+  it("should forward requests through Caddy -> Nginx -> Mock Backend", async () => {
+    const res = await new Promise((resolve, reject) => {
+      const agent = new https.Agent({ rejectUnauthorized: false });
+      const req = https.request({
+        hostname: "localhost",
+        port: caddyHttpsPort,
+        method: "POST",
+        agent,
+        servername: "alma.test",
+        headers: { 
+          Host: "alma.test",
+          apikey: "1b0e1bfa203530d43a0bd8461aa018b7" // Test API key from nginx.conf
+        },
+        path: "/engine/v1/chat/completions",
+      }, resolve);
+      req.on("error", reject);
+      req.end();
+    });
 
-//     await waitForHttps({
-//       port: caddyHttpsPort,
-//       timeout: process.env.TEST_TIMEOUT,
-//     });
-//   });
+    expect(res.statusCode).toBe(200);
+    
+    let data = "";
+    for await (const chunk of res) {
+      data += chunk;
+    }
+    const json = JSON.parse(data);
+    expect(json.object).toBe("chat.completion");
+  });
 
-//   afterAll(async () => {
-//     if (caddyContainer) await caddyContainer.stop({ remove: true });
-//     if (nginxContainer?.container) await nginxContainer.container.stop({ remove: true });
-//     if (network) await network.stop({ remove: true });
-// });
+  it("Nginx should return 401 if no API key is provided", async () => {
+    const res = await new Promise((resolve, reject) => {
+      const agent = new https.Agent({ rejectUnauthorized: false });
+      const req = https.request({
+        hostname: "localhost",
+        port: caddyHttpsPort,
+        method: "POST",
+        agent,
+        servername: "alma.test",
+        headers: { Host: "alma.test" },
+        path: "/engine/v1/chat/completions",
+      }, resolve);
+      req.on("error", reject);
+      req.end();
+    });
 
-//   it("should start both containers without crashing", async () => {
-//     expect(caddyContainer.container).toBeDefined();
-//     expect(nginxContainer.container).toBeDefined();
-//   });
+    expect(res.statusCode).toBe(401);
+  });
 
-//   it("Caddy should serve HTTPS correctly", async () => {
-//     const res = await waitForHttps({ port: caddyHttpsPort });
-//     // We expect a 404 because there is no index.html and it only redirects to nginx
-//     expect(res.statusCode).toBe(404);
-//   });
+  it("Nginx should return 403 if an invalid API key is provided", async () => {
+    const res = await new Promise((resolve, reject) => {
+      const agent = new https.Agent({ rejectUnauthorized: false });
+      const req = https.request({
+        hostname: "localhost",
+        port: caddyHttpsPort,
+        method: "POST",
+        agent,
+        servername: "alma.test",
+        headers: { 
+          Host: "alma.test",
+          apikey: "invalid-key"
+        },
+        path: "/engine/v1/chat/completions",
+      }, resolve);
+      req.on("error", reject);
+      req.end();
+    });
 
-//   it("Caddy should redirect HTTP to HTTPS", async () => {
-//     const res = await waitForHttp({ port: caddyHttpPort });
-
-//     // Caddy usually redirects with these codes
-//     // when forcing HTTPS
-//     expect([301, 308]).toContain(res.statusCode);
-
-//     const location = res.headers["location"];
-//     expect(location).toMatch(/^https:\/\//);
-//   });
-
-//   it("Caddy should redirect request to nginx", async () => {
-//     const res = await new Promise((resolve, reject) => {
-//       const agent = new https.Agent({ rejectUnauthorized: false });
-
-//       https
-//         .get(
-//           {
-//             hostname: "localhost",
-//             port: caddyHttpsPort,
-//             agent,
-//             servername: process.env.TEST_DOMAIN,
-//             headers: { Host: process.env.TEST_DOMAIN },
-//             path: "/engine/v1/chat/completions",
-//           },
-//           resolve
-//         )
-//         .on("error", reject);
-//     });
-
-//     // Nginx should respond (because Caddy forwarded the request)
-//     // Caddy sends apikey: test-api-key   → Nginx sees it but it does not match any valid keys → 403
-//     expect(res.statusCode).toBe(403);
-//   });
-
-//   it("nginx should be listening on 8080 (mapped)", async () => {
-//     const isListening = await new Promise((resolve) => {
-//       const socket = net.createConnection({ host: "127.0.0.1", port }, () => {
-//         socket.end();
-//         resolve(true);
-//       });
-
-//       socket.on("error", () => resolve(false));
-//     });
-
-//     expect(isListening).toBe(true);
-//   });
-
-//   it("nginx should return 401 because no api-key was sent in the headers", async () => {
-//     const res = await new Promise((resolve) => {
-//       http.get(
-//         {
-//           hostname: "127.0.0.1",
-//           port,
-//           path: "/testPath",
-//         },
-//         resolve
-//       );
-//     });
-//     expect(res.statusCode).toBe(401);
-//   });
-
-//   it("nginx should return 403 an invalid api-key was sent", async () => {
-//     const res = await new Promise((resolve) => {
-//       http.get(
-//         {
-//           hostname: "127.0.0.1",
-//           port,
-//           path: "/testPath",
-//           headers: {
-//             apikey: "invalid-api-key",
-//           },
-//         },
-//         resolve
-//       );
-//     });
-
-//     expect(res.statusCode).toBe(403);
-//   });
+    expect(res.statusCode).toBe(403);
+  });
 });
