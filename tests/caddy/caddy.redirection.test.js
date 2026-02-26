@@ -1,4 +1,5 @@
 import https from "https";
+import fs from "fs";
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { Network } from "testcontainers";
 import { startBackendMock } from "./helpers/startBackendMock.js";
@@ -12,6 +13,7 @@ describe.sequential("Caddy reverse proxy /engine/*", () => {
   let backend;
   let caddy;
   let httpsPort;
+  let tempCaddyfile;
 
   beforeAll(async () => {
     network = await new Network().start()
@@ -22,6 +24,7 @@ describe.sequential("Caddy reverse proxy /engine/*", () => {
       caddyRedirectionHost: backendContainerName,
       network
     });
+    tempCaddyfile = caddy.caddyfilePath;
 
     httpsPort = caddy.httpsPort;
     await waitForHttps({ port: httpsPort, timeout: process.env.TEST_TIMEOUT });
@@ -31,6 +34,9 @@ describe.sequential("Caddy reverse proxy /engine/*", () => {
     if (backend?.container) await backend.container.stop({ remove: true });
     if (caddy?.container) await caddy.container.stop({ remove: true });
     if (network) await network.stop({ remove: true });
+    if (tempCaddyfile && fs.existsSync(tempCaddyfile)) {
+      fs.unlinkSync(tempCaddyfile);
+    }
   });
 
   it("should strip /engine and forward request with correct headers", async () => {
