@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-export function generateTestNginxConf({ originalConfPath, backendHost, backendPort }) {
+export function generateTestNginxConf({ originalConfPath, backendHost, backendPort, uniqueSuffix }) {
   if (!originalConfPath || !fs.existsSync(originalConfPath)) {
     throw new Error("Original nginx file does not exist");
   }
@@ -16,7 +16,8 @@ export function generateTestNginxConf({ originalConfPath, backendHost, backendPo
     fs.mkdirSync(configDir, { recursive: true });
   }
 
-  const testConfPath = path.join(configDir, "nginx.test.mockllm.conf");
+  const filename = uniqueSuffix ? `nginx.test.mockllm.conf.${uniqueSuffix}` : "nginx.test.mockllm.conf";
+  const testConfPath = path.join(configDir, filename);
 
   fs.writeFileSync(testConfPath, conf, "utf-8");
 

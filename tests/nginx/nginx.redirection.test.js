@@ -40,6 +40,7 @@ describe.sequential("Nginx endpoints following happy path (one req per path and 
   let backend;
   let port;
   let network;
+  let tempConf;
 
   beforeAll(async () => {
     network = await new Network().start();
@@ -50,11 +51,14 @@ describe.sequential("Nginx endpoints following happy path (one req per path and 
       network
     });
 
+    const uniqueSuffix = Math.random().toString(36).substring(2, 9);
     const testConf = generateTestNginxConf({
       originalConfPath: process.env.NGINX_FILE_TO_TEST,
       backendHost: backend.containerName,
-      backendPort: backendContainerPort
+      backendPort: backendContainerPort,
+      uniqueSuffix
     });
+    tempConf = testConf;
 
     nginx = await startNginxFromFile({
       nginxConfPath: testConf,
@@ -70,6 +74,9 @@ describe.sequential("Nginx endpoints following happy path (one req per path and 
     if (nginx?.container) await nginx.container.stop({ remove: true });
     if (backend?.container) await backend.container.stop({ remove: true });
     if (network) await network.stop({ remove: true });
+    if (tempConf && fs.existsSync(tempConf)) {
+      fs.unlinkSync(tempConf);
+    }
   });
 
   mapEntries.forEach(({ apikey, client }) => {
