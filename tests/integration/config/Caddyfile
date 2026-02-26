@@ -1,0 +1,21 @@
+alma.test {
+    tls /etc/caddy/test-cert.pem /etc/caddy/test-key.pem
+
+    root * /usr/share/caddy/www
+    file_server
+
+    handle_path /engine/* {
+        uri strip_prefix /engine/
+        reverse_proxy {{BACKEND_HOST}}:{{BACKEND_PORT}} {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    @forceHTTPS {
+        protocol http
+    }
+    redir @forceHTTPS https://{host}{uri} permanent
+}
