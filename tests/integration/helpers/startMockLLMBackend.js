@@ -1,7 +1,7 @@
 import { GenericContainer } from "testcontainers";
 
 export async function startMockLLMBackend({ containerName, containerPort = 8080, network }) {
-  const container = new GenericContainer("node:22")
+  const container = new GenericContainer("node:22-alpine")
     .withCopyContentToContainer([
       {
         target: "/app/server.js",

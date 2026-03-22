@@ -1,7 +1,7 @@
 import { GenericContainer } from "testcontainers";
 
 export async function startBackendMock({containerName, containerPort = 3000, network}) {
-  const container = await new GenericContainer("node:22")
+  const container = await new GenericContainer("node:22-alpine")
     .withName(containerName)
     .withCopyContentToContainer([
         {
