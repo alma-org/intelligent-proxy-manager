@@ -8,6 +8,7 @@
     "sla-wizard-plugin-sla-generator": "^1.0.1"
   },
   "devDependencies": {
+    "supertest": "^7.0.0",
     "testcontainers": "^11.13.0",
     "vitest": "^4.0.9"
   }
