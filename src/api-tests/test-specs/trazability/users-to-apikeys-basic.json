@@ -1,0 +1,8 @@
+{
+  "existingbasicuser1@us.es": {
+    "apikeys": [
+      "c57d42342af87c46181dd7820174cd9f"
+    ],
+    "slaFile": "ipm-tests\\makefileTesting\\test-specs\\slas_debug\\sla_existingbasicuser1_us_es.yaml"
+  }
+}
