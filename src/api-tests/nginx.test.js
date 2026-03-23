@@ -11,9 +11,10 @@ const { createApp } = _require('../app.js');
 const nginxService = _require('../services/nginxService.js');
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
-const oasPath = path.join(projectRoot, 'specs/hpc-oas.yaml');
-const slasPath = path.join(projectRoot, 'specs/slas');
+const testSpecsDir = path.join(__dirname, 'test-specs');
+const oasPath = path.join(testSpecsDir, 'hpc-oas.yaml');
+const slasPath = path.join(testSpecsDir, 'slas');
+const slaPath = path.join(testSpecsDir, 'slas/sla_existingbasicuser1_us_es.yaml');
 
 const app = createApp();
 
@@ -107,9 +108,7 @@ describe('POST /nginx/confd/users', () => {
     });
 
     it('returns 400 when outDir is missing', async () => {
-        const res = await request(app).post('/nginx/confd/users').send({
-            slaPath: path.join(projectRoot, 'specs/slas/sla_dgalvan_us_es.yaml')
-        });
+        const res = await request(app).post('/nginx/confd/users').send({ slaPath });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/outDir/);
@@ -120,7 +119,7 @@ describe('POST /nginx/confd/users', () => {
         fs.mkdirSync(outDir, { recursive: true });
 
         const res = await request(app).post('/nginx/confd/users').send({
-            slaPath: path.join(projectRoot, 'specs/slas/sla_dgalvan_us_es.yaml'),
+            slaPath,
             outDir,
             oasPath
         });
@@ -137,7 +136,7 @@ describe('DELETE /nginx/confd/users', () => {
     beforeAll(async () => {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ipm-nginx-confd-delete-'));
         await request(app).post('/nginx/confd/users').send({
-            slaPath: path.join(projectRoot, 'specs/slas/sla_dgalvan_us_es.yaml'),
+            slaPath,
             outDir: tmpDir,
             oasPath
         });
@@ -148,9 +147,7 @@ describe('DELETE /nginx/confd/users', () => {
     });
 
     it('returns 400 when outDir is missing', async () => {
-        const res = await request(app).delete('/nginx/confd/users').send({
-            slasPath: path.join(projectRoot, 'specs/slas/sla_dgalvan_us_es.yaml')
-        });
+        const res = await request(app).delete('/nginx/confd/users').send({ slasPath: slaPath });
 
         expect(res.status).toBe(400);
         expect(res.body.message).toMatch(/outDir/);
@@ -166,7 +163,7 @@ describe('DELETE /nginx/confd/users', () => {
     it('returns 200 and removes the user conf file', async () => {
         const res = await request(app).delete('/nginx/confd/users').send({
             outDir: tmpDir,
-            slasPath: path.join(projectRoot, 'specs/slas/sla_dgalvan_us_es.yaml')
+            slasPath: slaPath
         });
 
         expect(res.status).toBe(200);

@@ -12,8 +12,8 @@ const { createApp } = _require('../app.js');
 const app = createApp();
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
-const slasDir = path.join(projectRoot, 'specs/slas');
+const testSpecsDir = path.join(__dirname, 'test-specs');
+const slasDir = path.join(testSpecsDir, 'slas');
 
 describe('GET /slas', () => {
     it('returns 200 with the SLAs from the given directory', async () => {
@@ -48,7 +48,7 @@ describe('POST /slas', () => {
 
     it('returns 400 when templatePath is missing', async () => {
         const res = await request(app).post('/slas').send({
-            csvPath: path.join(projectRoot, 'specs/csv/usersBasic.csv'),
+            csvPath: path.join(testSpecsDir, 'csv/usersBasic.csv'),
             userKeysJsonPath: path.join(tmpDir, 'mapping.json')
         });
 
@@ -58,7 +58,7 @@ describe('POST /slas', () => {
 
     it('returns 400 when csvPath is missing', async () => {
         const res = await request(app).post('/slas').send({
-            templatePath: path.join(projectRoot, 'specs/slaTemplates/basicResearcher.yaml'),
+            templatePath: path.join(testSpecsDir, 'slaTemplates/basicResearcher.yaml'),
             userKeysJsonPath: path.join(tmpDir, 'mapping.json')
         });
 
@@ -68,8 +68,8 @@ describe('POST /slas', () => {
 
     it('returns 400 when userKeysJsonPath is missing', async () => {
         const res = await request(app).post('/slas').send({
-            templatePath: path.join(projectRoot, 'specs/slaTemplates/basicResearcher.yaml'),
-            csvPath: path.join(projectRoot, 'specs/csv/usersBasic.csv')
+            templatePath: path.join(testSpecsDir, 'slaTemplates/basicResearcher.yaml'),
+            csvPath: path.join(testSpecsDir, 'csv/usersBasic.csv')
         });
 
         expect(res.status).toBe(400);
@@ -82,8 +82,8 @@ describe('POST /slas', () => {
         fs.mkdirSync(outDir, { recursive: true });
 
         const res = await request(app).post('/slas').send({
-            templatePath: path.join(projectRoot, 'specs/slaTemplates/basicResearcher.yaml'),
-            csvPath: path.join(projectRoot, 'specs/csv/usersBasic.csv'),
+            templatePath: path.join(testSpecsDir, 'slaTemplates/basicResearcher.yaml'),
+            csvPath: path.join(testSpecsDir, 'csv/usersBasic.csv'),
             slasPath: outDir,
             userKeysJsonPath: mappingPath
         });
