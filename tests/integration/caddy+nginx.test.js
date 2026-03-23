@@ -2,8 +2,6 @@ import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { startCaddy } from "./helpers/startCaddyContainer.js";
 import { waitForHttps } from "./helpers/waitForHttps.js";
 import { waitForHttp } from "./helpers/waitForHttp.js";
-import net from "net";
-import http from "http";
 import https from "https";
 import { startNginxFromFile } from "./helpers/startNginxFromFile.js";
 import { startMockLLMBackend } from "./helpers/startMockLLMBackend.js";
@@ -15,6 +13,13 @@ import { generateDevCertificates } from "../caddy/helpers/generateCerts.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const confPath = process.env.NGINX_FILE_TO_TEST;
+const confText = confPath && fs.existsSync(confPath) ? fs.readFileSync(confPath, "utf-8") : "";
+const apikeyMatch = /~\(\s*([a-f0-9]+)\s*\)/.exec(confText);
+const uriMatch = /if\s*\(\s*\$uri\s*=\s*(\/[^\s)]+)\s*\)/.exec(confText);
+const validApikey = apikeyMatch ? apikeyMatch[1] : null;
+const validPath = uriMatch ? `/engine${uriMatch[1]}` : null;
 
 describe.sequential("Caddy HTTPS + Nginx integration test", () => {
   let network;
@@ -141,11 +146,11 @@ describe.sequential("Caddy HTTPS + Nginx integration test", () => {
         method: "POST",
         agent,
         servername: "alma.test",
-        headers: { 
+        headers: {
           Host: "alma.test",
-          apikey: "1b0e1bfa203530d43a0bd8461aa018b7" // Test API key from nginx.conf
+          apikey: validApikey
         },
-        path: "/engine/v1/chat/completions",
+        path: validPath,
       }, resolve);
       req.on("error", reject);
       req.end();
