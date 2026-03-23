@@ -1,14 +1,11 @@
-NODE_CMD ?= node
-SLA_WIZARD_PATH ?= ../sla-wizard
 AUTH_LOCATION ?= header
 NUM_KEYS_PER_USER ?= 1
 DOCKER_COMPOSE_NGINX ?= ./docker-compose/docker-compose-nginx-hpc.yaml
 OAS_PATH ?= ./specs/hpc-oas.yaml
-SLAS_PATH ?=./specs/slas
-NGINX_CONF_PATH ?= ./nginx.conf
+SLAS_PATH ?= ./specs/slas
+NGINX_OUT_DIR ?= ./nginxConf
 NGINX_CONTAINER ?= sla-proxy
-NGINX_TARGET_CONFIG ?= ../nginxConf/nginx.conf
-
+API_URL ?= http://localhost:3000
 
 .DEFAULT_GOAL := help
 
@@ -98,7 +95,7 @@ docker_status:  ## Show active and all Docker containers
 # =====================================================
 
 create_slas_using_template:  ## Generate or update SLAs using an SLA template and a csv with the users (preserves existing API keys)
-	@echo "# Creating/updating SLAs with sla-wizard using the given template..."
+	@echo "# Creating/updating SLAs via API..."
 	@if [ "${TEMPLATE_PATH}" = "" ]; then \
 		echo "No template set. Please specify a template using TEMPLATE_PATH option"; \
 		exit 1; \
@@ -111,43 +108,32 @@ create_slas_using_template:  ## Generate or update SLAs using an SLA template an
 		echo "Please enter a path for the file containing user-keys correspondence. Use USER_KEYS_JSON_PATH option"; \
 		exit 1; \
 	fi
-	node ${SLA_WIZARD_PATH}/src/index.js generate-slas --slaTemplate ${TEMPLATE_PATH} --csv ${USERS_CSV_PATH} --outDir ${SLAS_PATH} --numKeys ${NUM_KEYS_PER_USER} --mappingFile ${USER_KEYS_JSON_PATH} --existingSLAs ${SLAS_PATH}
+	curl -f -X POST "$(API_URL)/slas" \
+		-H 'Content-Type: application/json' \
+		-d '{"templatePath":"$(abspath $(TEMPLATE_PATH))","csvPath":"$(abspath $(USERS_CSV_PATH))","slasPath":"$(abspath $(SLAS_PATH))","numKeysPerUser":$(NUM_KEYS_PER_USER),"userKeysJsonPath":"$(abspath $(USER_KEYS_JSON_PATH))"}'
 	@echo "# SLAs created/updated"
 
-create_nginx_config:  ## Generate nginx.conf file from SLAs
-	@ echo "Creating proxy configuration file with sla-wizard for nginx"
-	"$(NODE_CMD)" "${SLA_WIZARD_PATH}/src/index.js" config --authLocation "${AUTH_LOCATION}" nginx --oas "${OAS_PATH}" --sla "${SLAS_PATH}" --outFile "${NGINX_CONF_PATH}"
-	@ echo "...NODE DONE"
-	@ echo "Replacing localhost:8000 -> host.docker.internal:8000"
-	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/localhost:8000/g, '127.0.0.1:8000'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
-	@ echo "...REPLACE 1 DONE"
-	@ echo "Ensuring nginx listens on port 8080 instead of 80 ;"
-	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/listen 80;/g, 'listen 8080;'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
-	@ echo "...REPLACE 2 DONE"
-	@ echo "Checking SLAs..."
-	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_TARGET_CONFIG)) 2>/dev/null || echo $(abspath $(NGINX_TARGET_CONFIG)))" npm test
+create_nginx_config:  ## Generate nginx.conf + conf.d/ from SLAs and run tests
+	@echo "# Generating nginx config via API..."
+	curl -f -X POST "$(API_URL)/nginx/config" \
+		-H 'Content-Type: application/json' \
+		-d '{"outDir":"$(abspath $(NGINX_OUT_DIR))","oasPath":"$(abspath $(OAS_PATH))","slasPath":"$(abspath $(SLAS_PATH))","authLocation":"$(AUTH_LOCATION)"}'
+	@echo "# Nginx config generated"
+	@echo "# Checking SLAs..."
+	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_OUT_DIR)/nginx.conf) 2>/dev/null || echo $(abspath $(NGINX_OUT_DIR)/nginx.conf))" npm test
 	cd ..
 
-
-replace_nginx_config:  ## Its as create_nginx_config but it replaces the current configuration by the new one and reloads nginx proxy to update changes
-	@ echo "Creating proxy configuration file with sla-wizard for nginx"
-	"$(NODE_CMD)" "${SLA_WIZARD_PATH}/src/index.js" config --authLocation "${AUTH_LOCATION}" nginx --oas "${OAS_PATH}" --sla "${SLAS_PATH}" --outFile "${NGINX_TARGET_CONFIG}"
-	@ echo "...NODE DONE"
-	@ echo "Replacing localhost:8000 -> host.docker.internal:8000"
-	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/localhost:8000/g, '127.0.0.1:8000'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
-	@ echo "...REPLACE 1 DONE"
-	@ echo "Ensuring nginx listens on port 8080 instead of 80 ;"
-	@ "$(NODE_CMD)" -e "const fs = require('fs'); const p = process.argv[1]; let c = fs.readFileSync(p, 'utf8'); c = c.replace(/listen 80;/g, 'listen 8080;'); fs.writeFileSync(p, c);" "${NGINX_TARGET_CONFIG}"
-	@ echo "...REPLACE 2 DONE"
-	@ echo "Checking SLAs..."
-	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_TARGET_CONFIG)) 2>/dev/null || echo $(abspath $(NGINX_TARGET_CONFIG)))" npm test
+replace_nginx_config:  ## Generate nginx config, validate syntax and reload the nginx container
+	@echo "# Generating nginx config and reloading via API..."
+	curl -f -X POST "$(API_URL)/nginx/config/reload" \
+		-H 'Content-Type: application/json' \
+		-d '{"outDir":"$(abspath $(NGINX_OUT_DIR))","oasPath":"$(abspath $(OAS_PATH))","slasPath":"$(abspath $(SLAS_PATH))","authLocation":"$(AUTH_LOCATION)","nginxContainer":"$(NGINX_CONTAINER)"}'
+	@echo "# Nginx config generated and reloaded"
+	@echo "# Checking SLAs..."
+	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_OUT_DIR)/nginx.conf) 2>/dev/null || echo $(abspath $(NGINX_OUT_DIR)/nginx.conf))" npm test
 	cd ..
-	@ echo "Verifying nginx.conf syntax"
-	docker exec "${NGINX_CONTAINER}" nginx -t
-	@ echo "Reload nginx service"
-	docker exec "${NGINX_CONTAINER}" nginx -s reload
 
-check_slas: ## runs tests to check if the SLAs defined in nginx.conf are valid.
-	@ echo "Checking SLAs..."
-	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_TARGET_CONFIG)) 2>/dev/null || echo $(abspath $(NGINX_TARGET_CONFIG)))" npm test
+check_slas: ## Run tests to check if the SLAs defined in nginx.conf are valid
+	@echo "# Checking SLAs..."
+	cd tests && npx -y cross-env NGINX_FILE_TO_TEST="$(shell wslpath -m $(abspath $(NGINX_OUT_DIR)/nginx.conf) 2>/dev/null || echo $(abspath $(NGINX_OUT_DIR)/nginx.conf))" npm test
 	cd ..
