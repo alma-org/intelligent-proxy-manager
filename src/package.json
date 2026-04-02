@@ -5,6 +5,7 @@
   "dependencies": {
     "sla-wizard": "^1.1.0",
     "sla-wizard-nginx-confd": "^1.0.0",
+    "sla-wizard-plugin-nginx-strip": "^1.0.0",
     "sla-wizard-plugin-sla-generator": "^1.0.1"
   },
   "devDependencies": {

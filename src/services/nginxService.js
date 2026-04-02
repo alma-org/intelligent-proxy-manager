@@ -1,8 +1,10 @@
 const slaWizard = require('sla-wizard');
 const nginxConfd = require('sla-wizard-nginx-confd');
+const nginxStrip = require('sla-wizard-plugin-nginx-strip');
 const nginxRepository = require('../repositories/nginxRepository');
 
 slaWizard.use(nginxConfd);
+slaWizard.use(nginxStrip);
 
 const DEFAULTS = {
     oasPath: '../specs/hpc-oas.yaml',
@@ -19,7 +21,7 @@ async function generateConfig({ outDir, oasPath, slasPath, authLocation }) {
         slasPath: slasPath ?? DEFAULTS.slasPath,
         authLocation: authLocation ?? DEFAULTS.authLocation
     };
-    await slaWizard.configNginxConfd({ outDir: params.outDir, oas: params.oasPath, sla: params.slasPath, authLocation: params.authLocation, authName: 'apikey', proxyPort: 8080 });
+    await slaWizard.configNginxStrip({ outDir: params.outDir, oas: params.oasPath, sla: params.slasPath, authLocation: params.authLocation, authName: 'apikey', proxyPort: 8080 });
     nginxRepository.applyPostProcessing(params.outDir);
 }
 
@@ -31,14 +33,14 @@ async function generateAndReloadConfig({ outDir, oasPath, slasPath, authLocation
         authLocation: authLocation ?? DEFAULTS.authLocation,
         nginxContainer: nginxContainer ?? DEFAULTS.nginxContainer
     };
-    await slaWizard.configNginxConfd({ outDir: params.outDir, oas: params.oasPath, sla: params.slasPath, authLocation: params.authLocation, authName: 'apikey', proxyPort: 8080 });
+    await slaWizard.configNginxStrip({ outDir: params.outDir, oas: params.oasPath, sla: params.slasPath, authLocation: params.authLocation, authName: 'apikey', proxyPort: 8080 });
     nginxRepository.applyPostProcessing(params.outDir);
     nginxRepository.validateAndReload(params.nginxContainer);
 }
 
 async function addUserToConfd({ slaPath, outDir, oasPath }) {
     const oas = oasPath ?? DEFAULTS.oasPath;
-    return slaWizard.addToConfd({ outDir, oas, sla: slaPath, authName: 'apikey', proxyPort: 8080 });
+    return slaWizard.addToStripConfd({ outDir, oas, sla: slaPath, authName: 'apikey', proxyPort: 8080 });
 }
 
 async function removeUserFromConfd({ outDir, slasPath }) {
