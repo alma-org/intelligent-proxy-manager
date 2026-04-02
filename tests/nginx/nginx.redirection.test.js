@@ -18,6 +18,7 @@ if (!confPath || !fs.existsSync(confPath)) {
 const conf = fs.readFileSync(confPath, "utf-8");
 const apikeyRegex = /~\(\s*([a-f0-9]+)\s*\)/g;
 const clientRegex = /"\s*([a-zA-Z0-9_\-]+)\s*"/g;
+const uriRegex = /if\s*\(\s*\$uri\s*=\s*(\/[^\s)]+)\s*\)/;
 
 const apikeys = [];
 const clients = [];
@@ -27,8 +28,13 @@ while ((match = clientRegex.exec(conf)) !== null) {
   if (!match[1].match(/^[a-f0-9]+$/)) clients.push(match[1].trim());
 }
 
+const firstUri = uriRegex.exec(conf)?.[1] ?? null;
+
 if (apikeys.length !== clients.length) {
   throw new Error("Apikeys and client numbers are not the same. Check your nginx.conf");
+}
+if (!firstUri) {
+  throw new Error("Could not parse a URI path from NGINX_FILE_TO_TEST. Check your nginx.conf");
 }
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
@@ -79,8 +85,8 @@ describe.sequential("Nginx endpoints following happy path (one req per path and 
     }
   });
 
-  mapEntries.forEach(({ apikey, client }) => {
-    const endpoint = `/v1/chat/completions`;
+  mapEntries.forEach(({ apikey }) => {
+    const endpoint = firstUri;
 
     it(`should redirect POST ${endpoint} to the mock backend with apikey ${apikey} and return 200`, async () => {
       logger.debug(`testing ${endpoint} with api key ${apikey}`)

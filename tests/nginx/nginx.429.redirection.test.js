@@ -1,13 +1,11 @@
 import http from "http";
 import fs from "fs";
-import path from "path";
 import { describe, it, beforeAll, afterAll, expect } from "vitest";
 import { Network } from "testcontainers";
 import { startNginxFromFile } from "./helpers/startNginxFromFile.js";
 import { startMockLLMBackend } from "./helpers/startMockLLMBackend.js";
 import { generateTestNginxConf } from "./helpers/generateTestNginxConf.js";
 import logger from "../logger.js";
-import { sleep } from "../utils/sleep.js";
 
 const confPath = process.env.NGINX_FILE_TO_TEST;
 if (!confPath || !fs.existsSync(confPath)) {
@@ -18,6 +16,7 @@ const conf = fs.readFileSync(confPath, "utf-8");
 const apikeyRegex = /~\(\s*([a-f0-9]+)\s*\)/g;
 const clientRegex = /"\s*([a-zA-Z0-9_\-]+)\s*"/g;
 const limitReqRegex = /zone=([a-zA-Z0-9_\-]+):[0-9a-z]+ rate=(\d+)r\/m/g;
+const uriRegex = /if\s*\(\s*\$uri\s*=\s*(\/[^\s)]+)\s*\)/;
 
 const apikeys = [];
 const clients = [];
@@ -34,8 +33,13 @@ while ((match = limitReqRegex.exec(conf)) !== null) {
   limits[zone] = rate;
 }
 
+const firstUri = uriRegex.exec(conf)?.[1] ?? null;
+
 if (apikeys.length !== clients.length) {
   throw new Error("Apikeys and client numbers are not the same. Check your nginx.conf");
+}
+if (!firstUri) {
+  throw new Error("Could not parse a URI path from NGINX_FILE_TO_TEST. Check your nginx.conf");
 }
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
@@ -88,8 +92,9 @@ describe.sequential("Nginx reverse proxy 429 with mock backend (validate 200 bef
   });
 
   mapEntries.forEach(({ apikey, client }) => {
-    const endpoint = `/v1/chat/completions`;
-    const maxRequests = limits[`${client}_v1chatcompletions_POST`];
+    const endpoint = firstUri;
+    const zone = Object.keys(limits).find(z => z.startsWith(`${client}_`));
+    const maxRequests = zone ? limits[zone] : null;
 
     it(`should return 200 for the first ${maxRequests} requests and 429 afterwards at ${endpoint}`, async () => {
       const body = JSON.stringify({

@@ -14,13 +14,19 @@ const conf = fs.readFileSync(confPath, "utf-8");
 
 const apikeyRegex = /~\(\s*([a-f0-9]+)\s*\)/g;
 const clientRegex = /"\s*([a-zA-Z0-9_\-]+)\s*"/g;
+const limitReqRegex = /zone=([a-zA-Z0-9_\-]+):[0-9a-z]+ rate=(\d+)r\/m/g;
 
 const apikeys = [];
 const clients = [];
+const limits = {};
+
 let match;
 while ((match = apikeyRegex.exec(conf)) !== null) apikeys.push(match[1].trim());
 while ((match = clientRegex.exec(conf)) !== null) {
   if (!match[1].match(/^[a-f0-9]+$/)) clients.push(match[1].trim());
+}
+while ((match = limitReqRegex.exec(conf)) !== null) {
+  limits[match[1].trim()] = parseInt(match[2]);
 }
 
 if (apikeys.length !== clients.length) {
@@ -43,7 +49,8 @@ describe.sequential("Nginx endpoints following happy path (one req per path and 
   });
 
   mapEntries.forEach(({ apikey, client }) => {
-    const endpoint = `/${client}_v1chatcompletions_POST`;
+    const zone = Object.keys(limits).find(z => z.startsWith(`${client}_`));
+    const endpoint = zone ? `/${zone}` : null;
     it(`should return 502 for apikey ${apikey} at endpoint ${endpoint} because backend is not running`, async () => {
       logger.debug(`Testing ${endpoint} with apikey: ${apikey}`)
       const body = JSON.stringify({

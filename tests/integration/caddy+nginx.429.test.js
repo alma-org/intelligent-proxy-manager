@@ -25,6 +25,7 @@ const conf = fs.readFileSync(confPath, "utf-8");
 const apikeyRegex = /~\(\s*([a-f0-9]+)\s*\)/g;
 const clientRegex = /"\s*([a-zA-Z0-9_\-]+)\s*"/g;
 const limitReqRegex = /zone=([a-zA-Z0-9_\-]+):[0-9a-z]+ rate=(\d+)r\/m/g;
+const uriRegex = /if\s*\(\s*\$uri\s*=\s*(\/[^\s)]+)\s*\)/;
 
 const apikeys = [];
 const clients = [];
@@ -41,8 +42,13 @@ while ((match = limitReqRegex.exec(conf)) !== null) {
   limits[zone] = rate;
 }
 
+const firstUri = uriRegex.exec(conf)?.[1] ?? null;
+
 if (apikeys.length !== clients.length) {
   throw new Error("Apikeys and client numbers are not the same. Check your nginx.conf");
+}
+if (!firstUri) {
+  throw new Error("Could not parse a URI path from NGINX_FILE_TO_TEST. Check your nginx.conf");
 }
 
 const mapEntries = apikeys.map((k, i) => ({ apikey: k, client: clients[i] }));
@@ -141,8 +147,9 @@ describe.sequential("Caddy + Nginx 429 Integration Tests (SLAs)", () => {
   });
 
   mapEntries.forEach(({ apikey, client }) => {
-    const endpoint = `/engine/v1/chat/completions`;
-    const rateLimit = limits[`${client}_v1chatcompletions_POST`];
+    const zone = Object.keys(limits).find(z => z.startsWith(`${client}_`));
+    const endpoint = firstUri ? `/engine${firstUri}` : null;
+    const rateLimit = zone ? limits[zone] : undefined;
 
     if (rateLimit !== undefined) {
       it(`should enforce ${rateLimit} r/m for client ${client} through Caddy`, async () => {

@@ -55,8 +55,9 @@ describe.sequential("Nginx SLA limit tests (429)", () => {
   });
 
   mapEntries.forEach(({ apikey, client }) => {
-    const endpoint = `/${client}_v1chatcompletions_POST`;
-    const maxRequests = limits[`${client}_v1chatcompletions_POST`];
+    const zone = Object.keys(limits).find(z => z.startsWith(`${client}_`));
+    const endpoint = zone ? `/${zone}` : null;
+    const maxRequests = zone ? limits[zone] : null;
     it(`should return 429 for apikey ${apikey} at endpoint ${endpoint} after exceeding SLA (${maxRequests} requests)`, async () => {
       const body = JSON.stringify({
         model: "Qwen/Qwen2.5-Coder-32B-Instruct",
