@@ -9,7 +9,8 @@ info:
 servers:
   - url: http://localhost:8000
 paths:
-  /v1/chat/completions:
+  /models/chatgpt/v1/chat/completions:
+    x-nginx-strip: "/models/chatgpt"
     post:
       summary: Sends a prompt and gets the response
       description: >
@@ -24,6 +25,44 @@ paths:
               $ref: '#/components/schemas/ChatCompletionRequest'
             example:
               model: "gpt-3.5-turbo"
+              messages:
+                - role: "user"
+                  content: "Hello, how are you?"
+              temperature: 1
+              top_p: 1
+              frequency_penalty: 0
+              presence_penalty: 0
+              n: 1
+              stream: false
+      responses:
+        '200':
+          description: Response of the LLM
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+        default:
+          description: Unexpected Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /models/claude/v1/chat/completions:
+    x-nginx-strip: "/models/claude"
+    post:
+      summary: Sends a prompt and gets the response
+      description: >
+        It needs a body with the same OpenAI API format for Chat Completions
+        (`model`, `messages`, `temperature`, etc.) y and returns an object containing the response.
+      operationId: postChatCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+            example:
+              model: "claude-sonnet4.6"
               messages:
                 - role: "user"
                   content: "Hello, how are you?"
