@@ -89,13 +89,13 @@ export function mergeNginxConf({ confDir, backendHost, backendPort, outputPath }
     fs.writeFileSync(outputPath, conf, 'utf8');
 }
 
-export function makeRequest({ port, apikey }) {
+export function makeRequest({ port, apikey, path }) {
     return new Promise((resolve, reject) => {
         const req = http.request(
             {
                 hostname: 'localhost',
                 port,
-                path: '/models/chatgpt/v1/chat/completions',
+                path,
                 method: 'POST',
                 headers: { apikey },
             },

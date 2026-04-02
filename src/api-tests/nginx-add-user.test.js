@@ -5,6 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
+import { parse as parseYaml } from 'yaml';
 import { GenericContainer, Network } from 'testcontainers';
 import { MOCK_SERVER_CODE, mergeNginxConf, makeRequest, startNginx } from './helpers/nginxTestHelpers.js';
 
@@ -19,6 +20,12 @@ const testSpecsDir = path.join(__dirname, 'test-specs');
 // created from scratch via POST /slas and then wired into nginx via POST /nginx/confd/users.
 const NEW_USER_EMAIL = 'adduser@new.test';
 const NEW_USER_CSV_PATH = path.join(testSpecsDir, 'csv', 'usersForAddition.csv');
+
+// Read rate limit and request path from the template — no hardcoding needed.
+const NEW_USER_TEMPLATE_PATH = path.join(testSpecsDir, 'slaTemplates', 'basicResearcher.yaml');
+const newUserTemplate = parseYaml(fs.readFileSync(NEW_USER_TEMPLATE_PATH, 'utf8'));
+const NEW_USER_FIRST_PATH = Object.keys(newUserTemplate.plan.rates)[0];
+const NEW_USER_RATE_LIMIT = newUserTemplate.plan.rates[NEW_USER_FIRST_PATH].post.requests[0].max;
 
 describe.sequential('nginx add new user: generate SLA via API and verify rate limiting', () => {
     let tmpDir;
@@ -107,15 +114,15 @@ describe.sequential('nginx add new user: generate SLA via API and verify rate li
         expect(mapping[NEW_USER_EMAIL].apikeys[0]).toHaveLength(32); // hex md5 apikey
     });
 
-    it('returns 200 for each request within the new user SLA rate limit (5/min)', async () => {
-        for (let i = 0; i < 5; i++) {
-            const res = await makeRequest({ port: nginxPort, apikey: newUserApikey });
+    it(`returns 200 for each request within the new user SLA rate limit (${NEW_USER_RATE_LIMIT}/min)`, async () => {
+        for (let i = 0; i < NEW_USER_RATE_LIMIT; i++) {
+            const res = await makeRequest({ port: nginxPort, apikey: newUserApikey, path: NEW_USER_FIRST_PATH });
             expect(res.statusCode).toBe(200);
         }
     });
 
     it('returns 429 when the new user SLA rate limit is exceeded', async () => {
-        const res = await makeRequest({ port: nginxPort, apikey: newUserApikey });
+        const res = await makeRequest({ port: nginxPort, apikey: newUserApikey, path: NEW_USER_FIRST_PATH });
         expect(res.statusCode).toBe(429);
     });
 });

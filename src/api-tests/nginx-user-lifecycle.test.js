@@ -5,6 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
+import { parse as parseYaml } from 'yaml';
 import { GenericContainer, Network } from 'testcontainers';
 import { MOCK_SERVER_CODE, mergeNginxConf, makeRequest, startNginx } from './helpers/nginxTestHelpers.js';
 
@@ -18,8 +19,11 @@ const testSpecsDir = path.join(__dirname, 'test-specs');
 // sla-testlifecycleuser: simple single-segment context id so that configNginxConfd
 // (splitNginxConfig → extractUserKeyFromZone) and removeFromConfd both compute the
 // same filename: sla-testlifecycleuser_basic.conf
-const TARGET_APIKEY = '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d';
 const TARGET_SLA_PATH = path.join(testSpecsDir, 'slas', 'sla_testlifecycleuser.yaml');
+const targetSla = parseYaml(fs.readFileSync(TARGET_SLA_PATH, 'utf8'));
+const TARGET_APIKEY = targetSla.context.apikeys[0];
+const TARGET_FIRST_PATH = Object.keys(targetSla.plan.rates)[0];
+const TARGET_RATE_LIMIT = targetSla.plan.rates[TARGET_FIRST_PATH].post.requests[0].max;
 
 describe.sequential('nginx user lifecycle: generate config, rate limit, remove user', () => {
     let tmpDir;
@@ -74,15 +78,15 @@ describe.sequential('nginx user lifecycle: generate config, rate limit, remove u
         fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
-    it('returns 200 for each request within the SLA rate limit (5/min)', async () => {
-        for (let i = 0; i < 5; i++) {
-            const res = await makeRequest({ port: nginxPort, apikey: TARGET_APIKEY });
+    it(`returns 200 for each request within the SLA rate limit (${TARGET_RATE_LIMIT}/min)`, async () => {
+        for (let i = 0; i < TARGET_RATE_LIMIT; i++) {
+            const res = await makeRequest({ port: nginxPort, apikey: TARGET_APIKEY, path: TARGET_FIRST_PATH });
             expect(res.statusCode).toBe(200);
         }
     });
 
     it('returns 429 when the SLA rate limit is exceeded', async () => {
-        const res = await makeRequest({ port: nginxPort, apikey: TARGET_APIKEY });
+        const res = await makeRequest({ port: nginxPort, apikey: TARGET_APIKEY, path: TARGET_FIRST_PATH });
         expect(res.statusCode).toBe(429);
     });
 
@@ -105,7 +109,7 @@ describe.sequential('nginx user lifecycle: generate config, rate limit, remove u
         nginxPort = nginx.port;
 
         // The deleted user's apikey is no longer in the map → api_client_name = "" → nginx returns 403
-        const res = await makeRequest({ port: nginxPort, apikey: TARGET_APIKEY });
+        const res = await makeRequest({ port: nginxPort, apikey: TARGET_APIKEY, path: TARGET_FIRST_PATH });
         expect(res.statusCode).toBe(403);
     });
 });
