@@ -24,7 +24,12 @@ plan:
     billing: monthly
   availability: R/00:00:00Z/23:59:59Z
   rates:
-    /v1/chat/completions:
+    /models/chatgpt/v1/chat/completions:
+      post:
+        requests:
+          - max: 20
+            period: minute
+    /models/claude/v1/chat/completions:
       post:
         requests:
           - max: 10
