@@ -95,7 +95,7 @@ export function makeRequest({ port, apikey }) {
             {
                 hostname: 'localhost',
                 port,
-                path: '/v1/chat/completions',
+                path: '/models/chatgpt/v1/chat/completions',
                 method: 'POST',
                 headers: { apikey },
             },
