@@ -19,7 +19,8 @@ server.listen(8080);
 
 /**
  * Merges conf.d/*.conf files into nginx.conf and replaces the backend host.
- * Inlines limit_req_zone and map directives at http level, location blocks at server level.
+ * conf.d files now contain only location blocks (server context).
+ * limit_req_zone and map directives are already in nginx.conf at the http level.
  */
 export function mergeNginxConf({ confDir, backendHost, backendPort, outputPath }) {
     const nginxConfPath = path.join(confDir, 'nginx.conf');
@@ -31,21 +32,10 @@ export function mergeNginxConf({ confDir, backendHost, backendPort, outputPath }
             .filter(f => f.endsWith('.conf'))
             .map(f => path.join(confdDir, f));
 
-        const limitReqZones = [];
-        const mapEntries = [];
         const locations = [];
 
         for (const file of confdFiles) {
             const content = fs.readFileSync(file, 'utf8');
-
-            const lrzMatches = content.match(/^limit_req_zone\s+.+;/gm) || [];
-            limitReqZones.push(...lrzMatches);
-
-            const mapBlock = content.match(/map\s+\$http_apikey\s+\$api_client_name\s*\{([^}]+)\}/);
-            if (mapBlock) {
-                const entries = mapBlock[1].split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('default'));
-                mapEntries.push(...entries);
-            }
 
             const locRegex = /\blocation\b[^{]*\{/g;
             let m;
@@ -67,21 +57,6 @@ export function mergeNginxConf({ confDir, backendHost, backendPort, outputPath }
             .map(l => l.replace(backendPattern, `${backendHost}:${backendPort}`))
             .join('\n\n        ');
 
-        const mergedMap = [
-            '    map $http_apikey $api_client_name {',
-            '        default "";',
-            ...mapEntries.map(e => `        ${e}`),
-            '    }',
-        ].join('\n');
-
-        const httpDirectives = [
-            ...limitReqZones.map(z => `    ${z}`),
-            '',
-            mergedMap,
-            '',
-        ].join('\n');
-
-        conf = conf.replace(/(\s*server\s*\{)/, `\n${httpDirectives}$1`);
         conf = conf.replace(/include\s+conf\.d\/\*\.conf;/, mergedLocations);
     }
 
